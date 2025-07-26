@@ -19,6 +19,7 @@ TEST_DIR    = tests
 
 # Library setup
 LIB_NAME    = libbitonic_sort.a
+LIB_PATH    = $(BUILD_DIR)/$(LIB_NAME)
 LIB_SRC     = $(wildcard $(SRC_DIR)/*.cu)
 LIB_OBJ     = $(patsubst $(SRC_DIR)/%.cu, $(BUILD_DIR)/%.o, $(LIB_SRC))
 
@@ -28,14 +29,18 @@ TEST_OBJ    = $(patsubst $(TEST_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(TEST_SRC))
 TEST_BIN    = $(BUILD_DIR)/tests
 
 # Default target
-all: $(LIB_NAME) $(TEST_BIN)
+all: $(BUILD_DIR) $(LIB_PATH) $(TEST_BIN)
+
+# Create build directory if it doesn't exist
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
 # Compile CUDA source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cu
 	$(NVCC) $(NVFLAGS) -c $< -o $@
 
-# Archive static library
-$(LIB_NAME): $(LIB_OBJ)
+# Archive static library in build directory
+$(LIB_PATH): $(LIB_OBJ)
 	$(AR) rcs $@ $^
 
 # Compile C++ test files
@@ -43,9 +48,9 @@ $(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Link test binary
-$(TEST_BIN): $(TEST_OBJ) $(LIB_NAME)
+$(TEST_BIN): $(TEST_OBJ) $(LIB_PATH)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 # Clean
 clean:
-	rm -rf $(BUILD_DIR) *.a
+	rm -rf $(BUILD_DIR)

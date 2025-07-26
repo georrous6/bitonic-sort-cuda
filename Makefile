@@ -4,12 +4,10 @@ CXX      = g++
 AR       = ar
 
 # Flags
-CUDA_INC ?= /usr/include
-CUDA_LIB ?= /usr/lib/x86_64-linux-gnu
 
-CXXFLAGS = -O2 -Wall -I$(CUDA_INC) -Iinclude
-NVFLAGS  = -O2 -I$(CUDA_INC) -Iinclude
-LDFLAGS  = -L$(CUDA_LIB) -lcudart
+CXXFLAGS = -O2 -Wall -Iinclude
+NVFLAGS  = -O2 -Iinclude
+LDFLAGS  = -lcudart
 
 # File structure
 SRC_DIR     = src

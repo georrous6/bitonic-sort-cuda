@@ -30,6 +30,14 @@ fi
 module purge
 module load gcc cuda
 
+# --- Check for CUDA-compatible GPU ---
+GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n1)
+if [ -z "$GPU_NAME" ]; then
+    echo "No CUDA-compatible GPU detected."
+    exit 1
+fi
+echo "CUDA-compatible GPU detected: $GPU_NAME"
+
 # --- Build the project ---
 make
 

@@ -66,12 +66,24 @@ if [ ! -x "$EXECUTABLE" ]; then
 fi
 
 # --- Set parameters ---
-SIZE=$((2 ** 20))
-KERNEL="v0"
 
 # --- Run profiling with Nsight Systems ---
 echo -e "\n=== Profiling with Nsight Systems ==="
-nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report" "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
+
+KERNELS=("v0" "none")
+
+for KERNEL in "${KERNELS[@]}"; do
+    
+    # Define sizes to test
+    for q in {10..20}; do
+
+        SIZE=$((2 ** q))
+        echo -e "\n --- Running benchmark for kernel $KERNEL with size $SIZE ---"
+        
+        # Run the benchmark and profile it
+        nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report_${KERNEL}_${q}" \ 
+        "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
+    done
+done
 
 echo -e "\nAll benchmarks completed successfully."
-

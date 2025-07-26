@@ -21,16 +21,18 @@ fi
 # --- Move to the project directory ---
 cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 
-# --- Check if log directory exists, if not create it ---
-if [ ! -d "logs" ]; then
-    mkdir logs
-fi
+# --- Specify report and log directories
+LOGS_DIR="logs"
+REPORTS_DIR="reports"
+mkdir -p "$LOGS_DIR"
+mkdir -p "$REPORTS_DIR"
 
 # --- Load required modules ---
 module purge
 module load gcc cuda
 
 # --- Check for CUDA-compatible GPU ---
+echo -e "\n=== Checking for CUDA-compatible GPU ==="
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n1)
 if [ -z "$GPU_NAME" ]; then
     echo "No CUDA-compatible GPU detected."
@@ -39,18 +41,19 @@ fi
 echo "CUDA-compatible GPU detected: $GPU_NAME"
 
 # --- Check CUDA environment variables ---
-echo "Checking CUDA environment variables:"
+echo -e "\n=== Checking CUDA environment variables ==="
 echo "CUDA_HOME=$CUDA_HOME"
 echo "CUDA_PATH=$CUDA_PATH"
-echo "ls $CUDA_HOME:"
-ls $CUDA_HOME
 
 # --- Check if nvcc is available ---
-echo "Checking nvcc compiler:"
+echo -e "\n=== Checking nvcc compiler ==="
+echo "which nvcc:"
 which nvcc
+echo "nvcc --version:"
 nvcc --version
 
 # --- Build the project ---
+echo -e "\n=== Building the project ==="
 make
 
 # --- Define executable path ---
@@ -67,6 +70,8 @@ SIZE=$((2 ** 20))
 KERNEL="v0"
 
 # --- Run profiling with Nsight Systems ---
-nsys profile -t cuda --stats=true "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
+echo -e "\n=== Profiling with Nsight Systems ==="
+nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report" "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
 
-echo "All benchmarks completed successfully."
+echo -e "\nAll benchmarks completed successfully."
+

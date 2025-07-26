@@ -138,6 +138,22 @@ static int bitonic_sort_v0(int *host_data, int n, int ascending) {
 
 
 __host__
+static int bitonic_sort_v1(int *host_data, int n, int ascending) {
+    // Placeholder for future kernel version 1 implementation
+    fprintf(stderr, "Kernel version 1 is not implemented yet.\n");
+    return EXIT_FAILURE;
+}
+
+
+__host__
+static int bitonic_sort_v2(int *host_data, int n, int ascending) {
+    // Placeholder for future kernel version 2 implementation
+    fprintf(stderr, "Kernel version 2 is not implemented yet.\n");
+    return EXIT_FAILURE;
+}
+
+
+__host__
 int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_version) {
 
     if ((n & (n - 1)) != 0) {
@@ -146,17 +162,20 @@ int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_versio
     }
 
 
-    int status = EXIT_FAILURE;
+    int status = EXIT_SUCCESS;
     // Kernel launch
     switch (kernel_version) {
         case KERNEL_V0:
             status = bitonic_sort_v0(data, n, ascending);
             break;
         case KERNEL_V1:
-            // bitonic_sort_kernel_v1<<<blocksPerGrid, threadsPerBlock>>>(device_data, n, ascending);
+            status = bitonic_sort_v1(data, n, ascending);
             break;
         case KERNEL_V2:
-            // bitonic_sort_kernel_v2<<<blocksPerGrid, threadsPerBlock>>>(device_data, n, ascending);
+            status = bitonic_sort_v2(data, n, ascending);
+            break;
+        case KERNEL_NONE:
+            bitonic_sort_serial(data, n, ascending);
             break;
         default:
             fprintf(stderr, "Unsupported kernel version: %d\n", kernel_version);

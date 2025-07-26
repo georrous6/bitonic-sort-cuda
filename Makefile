@@ -4,8 +4,8 @@ CXX      = g++
 AR       = ar
 
 # Flags
-CUDA_INC = /usr/include
-CUDA_LIB = /usr/lib/x86_64-linux-gnu
+CUDA_INC ?= /usr/include
+CUDA_LIB ?= /usr/lib/x86_64-linux-gnu
 
 CXXFLAGS = -O2 -Wall -I$(CUDA_INC) -Iinclude
 NVFLAGS  = -O2 -I$(CUDA_INC) -Iinclude
@@ -16,6 +16,7 @@ SRC_DIR     = src
 BUILD_DIR   = build
 INCLUDE_DIR = include
 TEST_DIR    = tests
+BENCH_DIR   = benchmarks
 
 # Library setup
 LIB_NAME    = libbitonic_sort.a
@@ -28,8 +29,13 @@ TEST_SRC    = $(wildcard $(TEST_DIR)/*.cpp)
 TEST_OBJ    = $(patsubst $(TEST_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(TEST_SRC))
 TEST_BIN    = $(BUILD_DIR)/tests
 
+# Benchmark setup
+BENCHMARK_SRC  = $(BENCH_DIR)/benchmark.cpp
+BENCHMARK_OBJ  = $(BUILD_DIR)/benchmark.o
+BENCHMARK_BIN  = $(BUILD_DIR)/benchmark
+
 # Default target
-all: $(BUILD_DIR) $(LIB_PATH) $(TEST_BIN)
+all: $(BUILD_DIR) $(LIB_PATH) $(TEST_BIN) $(BENCHMARK_BIN)
 
 # Create build directory if it doesn't exist
 $(BUILD_DIR):
@@ -47,8 +53,16 @@ $(LIB_PATH): $(LIB_OBJ)
 $(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Compile benchmark source
+$(BENCHMARK_OBJ): $(BENCHMARK_SRC)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 # Link test binary
 $(TEST_BIN): $(TEST_OBJ) $(LIB_PATH)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
+
+# Link benchmark binary
+$(BENCHMARK_BIN): $(BENCHMARK_OBJ) $(LIB_PATH)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 # Clean

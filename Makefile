@@ -1,11 +1,8 @@
 # Tools
 NVCC     = nvcc
-CXX      = g++
 AR       = ar
 
 # Flags
-
-CXXFLAGS = -O2 -Wall -Iinclude
 NVFLAGS  = -O2 -Iinclude
 LDFLAGS  = -lcudart
 
@@ -43,25 +40,25 @@ $(BUILD_DIR):
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cu
 	$(NVCC) $(NVFLAGS) -c $< -o $@
 
-# Archive static library in build directory
+# Compile C++ test files with nvcc
+$(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
+	$(NVCC) $(NVFLAGS) -x cu -c $< -o $@
+
+# Compile benchmark with nvcc
+$(BENCHMARK_OBJ): $(BENCHMARK_SRC)
+	$(NVCC) $(NVFLAGS) -x cu -c $< -o $@
+
+# Archive static library
 $(LIB_PATH): $(LIB_OBJ)
 	$(AR) rcs $@ $^
 
-# Compile C++ test files
-$(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# Compile benchmark source
-$(BENCHMARK_OBJ): $(BENCHMARK_SRC)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
 # Link test binary
 $(TEST_BIN): $(TEST_OBJ) $(LIB_PATH)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
+	$(NVCC) $(NVFLAGS) $^ $(LDFLAGS) -o $@
 
 # Link benchmark binary
 $(BENCHMARK_BIN): $(BENCHMARK_OBJ) $(LIB_PATH)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
+	$(NVCC) $(NVFLAGS) $^ $(LDFLAGS) -o $@
 
 # Clean
 clean:

@@ -42,15 +42,13 @@ echo "CUDA-compatible GPU detected: $GPU_NAME"
 echo "Checking CUDA environment variables:"
 echo "CUDA_HOME=$CUDA_HOME"
 echo "CUDA_PATH=$CUDA_PATH"
-echo "PATH=$PATH"
-echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+echo "ls $CUDA_HOME:"
+ls $CUDA_HOME
 
+# --- Check if nvcc is available ---
 echo "Checking nvcc compiler:"
 which nvcc
 nvcc --version
-
-echo "Checking CUDA libraries:"
-ls -l $CUDA_HOME/lib64/libcudart.so*
 
 # --- Build the project ---
 make

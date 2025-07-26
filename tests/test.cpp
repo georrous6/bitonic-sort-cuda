@@ -1,14 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "bitonic_sort.hpp"
+#include "bitonic_sort.cuh"
 
 #define NTESTS 12
-
 
 #define BOLD_BLUE "\033[1;34m"
 #define BOLD_GREEN "\033[1;32m"
 #define BOLD_RED "\033[1;31m"
 #define RESET "\033[0m"
+
+
+int cmp_asc(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
+}
+
+
+int cmp_desc(const void *a, const void *b) {
+    return (*(int *)b - *(int *)a);
+}
 
 
 int test_case(int n, int ascending, kernel_version_t version) {
@@ -17,7 +26,8 @@ int test_case(int n, int ascending, kernel_version_t version) {
     fflush(stdout);
 
     int *data = (int *)malloc(n * sizeof(int));
-    if (!data) {
+    int *sorted_data = (int *)malloc(n * sizeof(int));
+    if (!data || !sorted_data) {
         fprintf(stderr, "Memory allocation failed\n");
         return EXIT_FAILURE;
     }
@@ -25,25 +35,24 @@ int test_case(int n, int ascending, kernel_version_t version) {
     // Initialize the array with random values
     for (int i = 0; i < n; i++) {
         data[i] = rand();
+        sorted_data[i] = data[i];
     }
-    
-    if (bitonic_sort(data, n, ascending, version)) {
-        fprintf(stderr, "Bitonic sort failed\n");
-        free(data);
-        return EXIT_FAILURE;
-    }
+
+    qsort(sorted_data, n, sizeof(int), ascending ? cmp_asc : cmp_desc);
+    bitonic_sort(data, n, ascending, version);
 
     int status = EXIT_SUCCESS;
 
     // Print sorted array
-    for (int i = 1; i < n; i++) {
-        if ((ascending && data[i] < data[i - 1]) || (!ascending && data[i] > data[i - 1])) {
+    for (int i = 0; i < n; i++) {
+        if (sorted_data[i] != data[i]) {
             status = EXIT_FAILURE;
             break;
         }
     }
 
     free(data);
+    free(sorted_data);
     return status;
 }
 

@@ -1,9 +1,10 @@
-#include "bitonic_sort.hpp"
+#include "bitonic_sort.cuh"
 #include <stdio.h>
 #include <cuda_runtime.h>
 
 // Swap elements if needed, based on direction
-static inline void compare_and_swap(int *arr, int i, int j, int ascending) {
+__host__ __device__ __forceinline__
+static void compare_and_swap(int *arr, int i, int j, int ascending) {
     if ((ascending && arr[i] > arr[j]) || (!ascending && arr[i] < arr[j])) {
         int temp = arr[i];
         arr[i] = arr[j];
@@ -29,86 +30,143 @@ static void bitonic_sort_serial(int *arr, int n, int ascending) {
 
 
 __global__ 
-void bitonic_sort_kernel_v0(int *data, int n, int ascending) {
+void kernel_v0(int *data, int n, int ascending, int size, int step) {
     // Calculate the global thread index
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // Ensure the thread index is within bounds
-    if (idx < n) {
-        // Perform bitonic sort logic here
-        // This is a placeholder for the actual bitonic sort implementation
-        // You would typically implement the bitonic sort algorithm here
+    int stride = blockDim.x * gridDim.x;
+    for (int i = idx; i < n; i += stride) {
+        int j = i ^ step;
+        if (j > i) {
+            int is_ascending = ((i & size) == 0) ? ascending : !ascending;
+            compare_and_swap(data, i, j, is_ascending);
+        }
     }
 }
 
 
-__host__ 
-int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_version) {
+__host__
+static int host_to_device_data(int *host_data, int n, int **device_data) {
+    cudaError_t err;
 
-    // Allocate Unified Memory - accessible from CPU or GPU
-
-    int *data_unified = NULL;
-    cudaError_t err = cudaMallocManaged(&data_unified, n * sizeof(int));
+    // Allocate device memory
+    err = cudaMalloc((void **)device_data, n * sizeof(int));
     if (err != cudaSuccess) {
-        fprintf(stderr, "Error allocating unified memory: %s\n", cudaGetErrorString(err));
-        fprintf(stderr, "Fallback to serial bitonic sort.\n");
-        bitonic_sort_serial(data, n, ascending);
-        return EXIT_SUCCESS;
-    }
-    
-    // initialize x and y arrays on the host
-    for (int i = 0; i < n; i++) {
-        data_unified[i] = data[i];
+        fprintf(stderr, "Error allocating device memory: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
     }
 
-
-    // Launch the kernel with appropriate grid and block dimensions
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
-
-    switch (kernel_version)
-    {
-    case KERNEL_V0:
-        bitonic_sort_kernel_v0<<<blocksPerGrid, threadsPerBlock>>>(data_unified, n, ascending);
-        break;
-    case KERNEL_V1:
-        // bitonic_sort_kernel_v1<<<blocksPerGrid, threadsPerBlock>>>(data_unified, n, ascending);
-        break;
-    case KERNEL_V2:
-        // bitonic_sort_kernel_v2<<<blocksPerGrid, threadsPerBlock>>>(data_unified, n, ascending);
-        break;
-    default:
-        // bitonic_sort_kernel_v2<<<blocksPerGrid, threadsPerBlock>>>(data_unified, n, ascending);
-        fprintf(stderr, "Invalid kernel version specified.\n");
+    // Copy data from host to device
+    err = cudaMemcpy(*device_data, host_data, n * sizeof(int), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Error copying data to device: %s\n", cudaGetErrorString(err));
+        cudaFree(*device_data);
+        return EXIT_FAILURE;
     }
-    
-    // Check for errors in kernel launch
+
+    return EXIT_SUCCESS;
+}
+
+
+__host__
+static int device_to_host_data(int *host_data, int n, int *device_data) {
+    cudaError_t err;
+
+    // Copy data from device to host
+    err = cudaMemcpy(host_data, device_data, n * sizeof(int), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Error copying data back to host: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+__host__
+static int post_launch_barrier_and_check(void) {
+    cudaError_t err;
     err = cudaGetLastError();
     if (err != cudaSuccess) {
-        cudaFree(data_unified); // Free the unified memory before falling back
-        fprintf(stderr, "Error launching bitonic sort kernel: %s\n", cudaGetErrorString(err));
-        fprintf(stderr, "Fallback to serial bitonic sort.\n");
-        bitonic_sort_serial(data, n, ascending);
-        return EXIT_SUCCESS;
+        fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
     }
 
-    // Wait for GPU to finish before accessing on host
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
-        cudaFree(data_unified); // Free the unified memory before falling back
-        fprintf(stderr, "Error synchronizing device: %s\n", cudaGetErrorString(err));
+        fprintf(stderr, "CUDA synchronization error: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+__host__
+static int bitonic_sort_v0(int *host_data, int n, int ascending) {
+
+    int threadsPerBlock = 256;
+    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+    int *device_data = NULL;
+
+    if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS) {
+        return EXIT_FAILURE;
+    }
+
+    for (int size = 2; size <= n; size <<= 1) {
+        for (int step = size >> 1; step > 0; step >>= 1) {
+
+            // Launch the kernel
+            kernel_v0<<<numBlocks, threadsPerBlock>>>(device_data, n, ascending, size, step);
+
+            if (post_launch_barrier_and_check()) {
+                cudaFree(device_data);
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    // Copy the sorted data back to host
+    if (device_to_host_data(host_data, n, device_data) != EXIT_SUCCESS) {
+        cudaFree(device_data);
+        return EXIT_FAILURE;
+    }
+
+    cudaFree(device_data);
+    return EXIT_SUCCESS;
+}
+
+
+__host__
+int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_version) {
+
+    if ((n & (n - 1)) != 0) {
+        fprintf(stderr, "Error: Input size n=%d is not a power of 2.\n", n);
+        return EXIT_FAILURE;
+    }
+
+
+    int status = EXIT_FAILURE;
+    // Kernel launch
+    switch (kernel_version) {
+        case KERNEL_V0:
+            status = bitonic_sort_v0(data, n, ascending);
+            break;
+        case KERNEL_V1:
+            // bitonic_sort_kernel_v1<<<blocksPerGrid, threadsPerBlock>>>(device_data, n, ascending);
+            break;
+        case KERNEL_V2:
+            // bitonic_sort_kernel_v2<<<blocksPerGrid, threadsPerBlock>>>(device_data, n, ascending);
+            break;
+        default:
+            fprintf(stderr, "Unsupported kernel version: %d\n", kernel_version);
+            status = EXIT_FAILURE;
+    }
+
+    if (status) {
         fprintf(stderr, "Fallback to serial bitonic sort.\n");
         bitonic_sort_serial(data, n, ascending);
-        return EXIT_SUCCESS;
     }
-
-    // Copy the sorted data back to the host
-    for (int i = 0; i < n; i++) {
-        data[i] = data_unified[i];
-    }
-
-    // Free the unified memory
-    cudaFree(data_unified);
 
     return EXIT_SUCCESS;
 }

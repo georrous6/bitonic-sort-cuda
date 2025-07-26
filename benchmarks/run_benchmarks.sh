@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=bitonic_benchmark
-#SBATCH --partition=ampere
+#SBATCH --partition=gpu
 #SBATCH --output=logs/slurm.out
 #SBATCH --time=01:00:00
 #SBATCH --nodes=1
@@ -37,6 +37,20 @@ if [ -z "$GPU_NAME" ]; then
     exit 1
 fi
 echo "CUDA-compatible GPU detected: $GPU_NAME"
+
+# --- Check CUDA environment variables ---
+echo "Checking CUDA environment variables:"
+echo "CUDA_HOME=$CUDA_HOME"
+echo "CUDA_PATH=$CUDA_PATH"
+echo "PATH=$PATH"
+echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
+echo "Checking nvcc compiler:"
+which nvcc
+nvcc --version
+
+echo "Checking CUDA libraries:"
+ls -l $CUDA_HOME/lib64/libcudart.so*
 
 # --- Build the project ---
 make

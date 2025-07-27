@@ -113,6 +113,12 @@ static int bitonic_sort_v0(int *host_data, int n, int ascending) {
         return EXIT_FAILURE;
     }
 
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "(HOST) BITONIC_SORT_V0 error: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
+    }
+
     for (int size = 2; size <= n; size <<= 1) {
         for (int step = size >> 1; step > 0; step >>= 1) {
 
@@ -158,6 +164,12 @@ int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_versio
 
     if ((n & (n - 1)) != 0) {
         fprintf(stderr, "Error: Input size n=%d is not a power of 2.\n", n);
+        return EXIT_FAILURE;
+    }
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "(HOST) BITONIC_SORT CUDA error: %s\n", cudaGetErrorString(err));
         return EXIT_FAILURE;
     }
 

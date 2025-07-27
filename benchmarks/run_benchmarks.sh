@@ -33,7 +33,7 @@ mkdir -p "$PLOTS_DIR"
 
 # --- Load required modules ---
 module purge
-module load gcc/14.2.0 cuda/12.6.2 python/3.13.0
+module load gcc/13.2.0-nbog6z2 cuda/12.4.0-obe7ebz python/3.11.7-47zltq2
 module list
 
 # --- Create python environment ---
@@ -68,6 +68,7 @@ nvcc --version
 
 # --- Build the project ---
 echo -e "\n=== Building the project ==="
+make clean
 make
 
 # --- Define executable path ---

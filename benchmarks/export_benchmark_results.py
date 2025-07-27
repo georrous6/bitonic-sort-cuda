@@ -147,4 +147,4 @@ if __name__ == "__main__":
 
     # Example usage (hardcoded kernel and filename)
     plot_kernel_time_breakdown("v0", args.input_dir, args.output_dir, "time_breakdown_v0.png")
-    plot_total_execution_time_vs_size(os.join(args.input_dir, "total_times.log"), args.output_dir, "total_execution_time_vs_size.png")
+    plot_total_execution_time_vs_size(os.path.join(args.input_dir, "total_times.log"), args.output_dir, "total_execution_time_vs_size.png")

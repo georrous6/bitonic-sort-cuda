@@ -1,10 +1,12 @@
 # Tools
 NVCC     = nvcc
 AR       = ar
+GPP      = g++
 
 # Flags
 NVFLAGS  = -O2 -Iinclude
-LDFLAGS  = -lcudart
+CPPFLAGS = -O2 -Iinclude -I$(CUDA_HOME)/include
+LDFLAGS  = -L$(CUDA_HOME)/lib64 -lcudart
 
 # File structure
 SRC_DIR     = src
@@ -36,30 +38,31 @@ all: $(BUILD_DIR) $(LIB_PATH) $(TEST_BIN) $(BENCHMARK_BIN)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Compile CUDA source files
+# Compile CUDA source files with nvcc
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cu
 	$(NVCC) $(NVFLAGS) -c $< -o $@
 
-# Compile C++ test files with nvcc
+# Compile test cpp files with g++
 $(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
-	$(NVCC) $(NVFLAGS) -x cu -c $< -o $@
+	$(GPP) $(CPPFLAGS) -c $< -o $@
 
-# Compile benchmark with nvcc
+# Compile benchmark cpp with g++
 $(BENCHMARK_OBJ): $(BENCHMARK_SRC)
-	$(NVCC) $(NVFLAGS) -x cu -c $< -o $@
+	$(GPP) $(CPPFLAGS) -c $< -o $@
 
 # Archive static library
 $(LIB_PATH): $(LIB_OBJ)
 	$(AR) rcs $@ $^
 
-# Link test binary
+# Link test binary with g++
 $(TEST_BIN): $(TEST_OBJ) $(LIB_PATH)
-	$(NVCC) $(NVFLAGS) $^ $(LDFLAGS) -o $@
+	$(GPP) $^ $(LDFLAGS) -o $@
 
-# Link benchmark binary
+# Link benchmark binary with g++
 $(BENCHMARK_BIN): $(BENCHMARK_OBJ) $(LIB_PATH)
-	$(NVCC) $(NVFLAGS) $^ $(LDFLAGS) -o $@
+	$(GPP) $^ $(LDFLAGS) -o $@
 
 # Clean
 clean:
 	rm -rf $(BUILD_DIR)
+

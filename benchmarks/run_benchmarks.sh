@@ -33,7 +33,7 @@ mkdir -p "$PLOTS_DIR"
 
 # --- Load required modules ---
 module purge
-module load gcc/13.2.0-nbog6z2 cuda/12.4.0-obe7ebz python/3.11.7-47zltq2
+module load gcc/12.2.0 cuda/12.2.1-bxtxsod python/3.10.8-cidwh6y
 module list
 
 # --- Create python environment ---
@@ -53,11 +53,15 @@ if [ -z "$GPU_NAME" ]; then
     exit 1
 fi
 echo "CUDA-compatible GPU detected: $GPU_NAME"
+nvidia-smi
 
 # --- Check CUDA environment variables ---
 echo -e "\n=== Checking CUDA environment variables ==="
 echo "CUDA_HOME=$CUDA_HOME"
 echo "CUDA_PATH=$CUDA_PATH"
+export CUDA_HOME=$CUDA_HOME
+#export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+#export LIBRARY_PATH=$CUDA_HOME/lib64:$LIBRARY_PATH
 
 # --- Check if nvcc is available ---
 echo -e "\n=== Checking nvcc compiler ==="

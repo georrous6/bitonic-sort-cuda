@@ -24,12 +24,25 @@ cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 # --- Specify report and log directories
 LOGS_DIR="logs"
 REPORTS_DIR="reports"
+PLOTS_DIR="docs/figures"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$REPORTS_DIR"
+mkdir -p "$PLOTS_DIR"
 
 # --- Load required modules ---
 module purge
-module load gcc cuda
+module load cuda
+module load gcc/14.2.0
+module load python/3.13.0
+
+# --- Create python environment ---
+if [ ! -d ~/grousenv ]; then
+    python3 -m venv ~/grousenv
+    source ~/grousenv/bin/activate
+    pip install numpy pandas matplotlib
+else
+    source ~/grousenv/bin/activate
+fi
 
 # --- Check for CUDA-compatible GPU ---
 echo -e "\n=== Checking for CUDA-compatible GPU ==="
@@ -85,5 +98,8 @@ for KERNEL in "${KERNELS[@]}"; do
         "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
     done
 done
+
+# --- Export results ---
+python3 benchmarks/export_benchmark_results.py "$REPORTS_DIR" "$PLOTS_DIR"
 
 echo -e "\nAll benchmarks completed successfully."

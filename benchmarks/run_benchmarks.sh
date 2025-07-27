@@ -25,15 +25,15 @@ cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 LOGS_DIR="logs"
 REPORTS_DIR="reports"
 PLOTS_DIR="docs/figures"
+rm -rf "$REPORTS_DIR"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$REPORTS_DIR"
 mkdir -p "$PLOTS_DIR"
 
 # --- Load required modules ---
 module purge
-module load cuda
-module load gcc/14.2.0
-module load python/3.13.0
+module load gcc/14.2.0 cuda/12.6.2 python/3.13.0
+module list
 
 # --- Create python environment ---
 if [ ! -d ~/grousenv ]; then
@@ -94,10 +94,13 @@ for KERNEL in "${KERNELS[@]}"; do
         echo -e "\n --- Running benchmark for kernel $KERNEL with size $SIZE ---"
         
         # Run the benchmark and profile it
-        nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report_${KERNEL}_${q}.sqlite" \
+        nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report_${KERNEL}_${q}" \
         "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
     done
 done
+
+# --- Remove nsys-rep files
+rm "$REPORTS_DIR"/*.nsys-rep
 
 # --- Export results ---
 python3 benchmarks/export_benchmark_results.py "$REPORTS_DIR" "$PLOTS_DIR"

@@ -94,7 +94,7 @@ for KERNEL in "${KERNELS[@]}"; do
         echo -e "\n --- Running benchmark for kernel $KERNEL with size $SIZE ---"
         
         # Run the benchmark and profile it
-        nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report_${KERNEL}_${q}" \
+        nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report_${KERNEL}_${q}.sqlite" \
         "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
     done
 done

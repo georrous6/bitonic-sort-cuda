@@ -165,6 +165,9 @@ int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_versio
     int status = EXIT_SUCCESS;
     // Kernel launch
     switch (kernel_version) {
+        case KERNEL_NONE:
+            bitonic_sort_serial(data, n, ascending);
+            break;
         case KERNEL_V0:
             status = bitonic_sort_v0(data, n, ascending);
             break;
@@ -174,9 +177,6 @@ int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_versio
         case KERNEL_V2:
             status = bitonic_sort_v2(data, n, ascending);
             break;
-        case KERNEL_NONE:
-            bitonic_sort_serial(data, n, ascending);
-            break;
         default:
             fprintf(stderr, "Unsupported kernel version: %d\n", kernel_version);
             status = EXIT_FAILURE;
@@ -185,6 +185,7 @@ int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_versio
     if (status) {
         fprintf(stderr, "Fallback to serial bitonic sort.\n");
         bitonic_sort_serial(data, n, ascending);
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

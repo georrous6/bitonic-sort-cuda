@@ -1,5 +1,5 @@
-#ifndef BITONIC_SORT_H
-#define BITONIC_SORT_H
+#ifndef BITONIC_SORT_CUDA_H
+#define BITONIC_SORT_CUDA_H
 
 #include <cuda_runtime.h>
 
@@ -10,7 +10,7 @@ typedef enum {
     KERNEL_V2 = 3
 } kernel_version_t;
 
-__host__ int bitonic_sort(int *data, int n, int ascending, kernel_version_t version);
+__host__ int bitonic_sort_cuda(int *data, int n, int ascending, kernel_version_t version);
 
 
 __host__ int wakeup_cuda(void);

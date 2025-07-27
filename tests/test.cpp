@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "bitonic_sort.cuh"
+#include "bitonic_sort_cuda.cuh"
 
 #define NTESTS 12
 
@@ -39,7 +39,7 @@ int test_case(int n, int ascending, kernel_version_t version) {
     }
 
     qsort(sorted_data, n, sizeof(int), ascending ? cmp_asc : cmp_desc);
-    bitonic_sort(data, n, ascending, version);
+    bitonic_sort_cuda(data, n, ascending, version);
 
     int status = EXIT_SUCCESS;
 

@@ -1,35 +1,14 @@
-#include "bitonic_sort.cuh"
+#include "bitonic_sort_cuda.cuh"
+#include "util.cuh"
+#include "kernel.cuh"
 #include <stdio.h>
 #include <cuda_runtime.h>
+
 
 __host__
 int wakeup_cuda(void) {
     wakeup_kernel<<<1, 1>>>();
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA wakeup error: %s\n", cudaGetErrorString(err));
-        return EXIT_FAILURE;
-    }
-    err = cudaDeviceSynchronize();
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA wakeup synchronization error: %s\n", cudaGetErrorString(err));
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}
-
-
-__global__
-void wakeup_kernel(void) {}
-
-// Swap elements if needed, based on direction
-__host__ __device__ __forceinline__
-static void compare_and_swap(int *arr, int i, int j, int ascending) {
-    if ((ascending && arr[i] > arr[j]) || (!ascending && arr[i] < arr[j])) {
-        int temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
-    }
+    return post_launch_barrier_and_check();
 }
 
 
@@ -46,79 +25,6 @@ static void bitonic_sort_serial(int *arr, int n, int ascending) {
             }
         }
     }
-}
-
-
-__global__ 
-void kernel_v0(int *data, int n, int ascending, int size, int step) {
-    // Calculate the global thread index
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    int stride = blockDim.x * gridDim.x;
-    for (int i = idx; i < n; i += stride) {
-        int j = i ^ step;
-        if (j > i) {
-            int is_ascending = ((i & size) == 0) ? ascending : !ascending;
-            compare_and_swap(data, i, j, is_ascending);
-        }
-    }
-}
-
-
-__host__
-static int host_to_device_data(int *host_data, int n, int **device_data) {
-    cudaError_t err;
-
-    // Allocate device memory
-    err = cudaMalloc((void **)device_data, n * sizeof(int));
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Error allocating device memory: %s\n", cudaGetErrorString(err));
-        return EXIT_FAILURE;
-    }
-
-    // Copy data from host to device
-    err = cudaMemcpy(*device_data, host_data, n * sizeof(int), cudaMemcpyHostToDevice);
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Error copying data to device: %s\n", cudaGetErrorString(err));
-        cudaFree(*device_data);
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-
-__host__
-static int device_to_host_data(int *host_data, int n, int *device_data) {
-    cudaError_t err;
-
-    // Copy data from device to host
-    err = cudaMemcpy(host_data, device_data, n * sizeof(int), cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Error copying data back to host: %s\n", cudaGetErrorString(err));
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-
-__host__
-static int post_launch_barrier_and_check(void) {
-    cudaError_t err;
-    err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(err));
-        return EXIT_FAILURE;
-    }
-
-    err = cudaDeviceSynchronize();
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA synchronization error: %s\n", cudaGetErrorString(err));
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
 }
 
 
@@ -174,7 +80,7 @@ static int bitonic_sort_v2(int *host_data, int n, int ascending) {
 
 
 __host__
-int bitonic_sort(int *data, int n, int ascending, kernel_version_t kernel_version) {
+int bitonic_sort_cuda(int *data, int n, int ascending, kernel_version_t kernel_version) {
 
     if ((n & (n - 1)) != 0) {
         fprintf(stderr, "Error: Input size n=%d is not a power of 2.\n", n);

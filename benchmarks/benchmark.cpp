@@ -3,7 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include "bitonic_sort.cuh"
+#include "bitonic_sort_cuda.cuh"
 
 
 void fill_random(int *arr, int n) {
@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
 
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
-    int status = bitonic_sort(data, n, !descending, version);
+    int status = bitonic_sort_cuda(data, n, !descending, version);
     clock_gettime(CLOCK_MONOTONIC, &end);
 
     double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;

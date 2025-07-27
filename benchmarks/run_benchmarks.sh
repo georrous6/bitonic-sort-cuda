@@ -25,6 +25,7 @@ cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 LOGS_DIR="logs"
 REPORTS_DIR="reports"
 PLOTS_DIR="docs/figures"
+TIMING_FILE="total_times.log"
 rm -rf "$REPORTS_DIR"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$REPORTS_DIR"
@@ -83,20 +84,27 @@ fi
 # --- Run profiling with Nsight Systems ---
 echo -e "\n=== Profiling with Nsight Systems ==="
 
-KERNELS=("v0" "none")
+KERNELS=("v0")
+Q_MIN=10
+Q_MAX=20
 
 for KERNEL in "${KERNELS[@]}"; do
     
     # Define sizes to test
-    for q in {10..20}; do
+    for q in $(seq $Q_MIN $Q_MAX); do
 
-        SIZE=$((2 ** q))
-        echo -e "\n --- Running benchmark for kernel $KERNEL with size $SIZE ---"
-        
+        echo -e "\n --- Running benchmark for kernel $KERNEL with q=$q ---"
+
         # Run the benchmark and profile it
         nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report_${KERNEL}_${q}" \
-        "$EXECUTABLE" "$SIZE" --kernel "$KERNEL" --desc
+        "$EXECUTABLE" "$q" --kernel "$KERNEL" --timing-file "$REPORTS_DIR/$TIMING_FILE"
     done
+done
+
+# --- Run benchmarks for CPU-only version ---
+for q in $(seq $Q_MIN $Q_MAX); do
+    echo -e "\n --- Running CPU-only benchmark with q=$q ---"
+    "$EXECUTABLE" "$q" --kernel none --timing-file "$REPORTS_DIR/$TIMING_FILE"
 done
 
 # --- Remove nsys-rep files

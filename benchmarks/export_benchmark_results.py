@@ -24,50 +24,36 @@ def parse_sqlite_report(filepath):
         SELECT
             nameId,
             COUNT(*) AS num_calls,
-            SUM(duration_ns) AS total_time_ns,
-            AVG(duration_ns) AS avg_time_ns,
-            MIN(duration_ns) AS min_time_ns,
-            MAX(duration_ns) AS max_time_ns
+            SUM(duration_ns) AS total_time_ns
         FROM per_call_time
         GROUP BY nameId
-    ),
-    total_time AS (
-        SELECT SUM(total_time_ns) AS grand_total_ns FROM agg_stats
     )
     SELECT
         s.value AS Name,
-        (a.total_time_ns * 100.0) / t.grand_total_ns AS Percent,
-        a.total_time_ns,
-        a.num_calls,
-        a.avg_time_ns,
-        a.min_time_ns,
-        a.max_time_ns
+        a.total_time_ns / 1e6 AS TimeMs  -- Convert to ms
     FROM agg_stats a
-    JOIN total_time t ON 1=1
     JOIN StringIds s ON s.id = a.nameId
     ORDER BY a.total_time_ns DESC;
     """
     with sqlite3.connect(filepath) as conn:
         df = pd.read_sql_query(query, conn)
 
-    # Remove version suffix from CUDA API calls (e.g., _v3020)
+    # Clean CUDA API names
     df["Name"] = df["Name"].str.replace(r"_v\d+$", "", regex=True)
 
-    return df[['Name', 'Percent']]
+    return df[['Name', 'TimeMs']]
 
 
-def plot_kernel_profile(kernel, input_dir, output_dir, filename):
-    # Find all relevant sqlite files
+def plot_kernel_time_breakdown(kernel, input_dir, output_dir, filename):
     files = [
         f for f in os.listdir(input_dir)
         if f.startswith(f"report_{kernel}_") and f.endswith(".sqlite")
     ]
 
-    # Sort files by extracted <size>
     files = sorted(files, key=lambda f: extract_size_from_filename(f, kernel))
 
     sizes = []
-    op_percent_dict = {}
+    op_time_dict = {}
 
     for f in files:
         size = extract_size_from_filename(f, kernel)
@@ -78,25 +64,25 @@ def plot_kernel_profile(kernel, input_dir, output_dir, filename):
 
         for _, row in df.iterrows():
             op = row['Name']
-            percent = row['Percent']
-            if op not in op_percent_dict:
-                op_percent_dict[op] = []
-            op_percent_dict[op].append(percent)
+            time_ms = row['TimeMs']
+            if op not in op_time_dict:
+                op_time_dict[op] = []
+            op_time_dict[op].append(time_ms)
 
-    # Pad missing values with 0 to ensure same length
-    for op in op_percent_dict:
-        while len(op_percent_dict[op]) < len(sizes):
-            op_percent_dict[op].append(0.0)
+    # Pad missing values with 0s
+    for op in op_time_dict:
+        while len(op_time_dict[op]) < len(sizes):
+            op_time_dict[op].append(0.0)
 
     # Create DataFrame for plotting
-    plot_df = pd.DataFrame(op_percent_dict, index=sizes)
+    plot_df = pd.DataFrame(op_time_dict, index=sizes)
     plot_df.sort_index(inplace=True)
 
     # Plot
     ax = plot_df.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
     ax.set_xlabel("Array Size")
-    ax.set_ylabel("Time Percentage (%)")
-    ax.set_title(f"CUDA Operation Breakdown - {kernel}")
+    ax.set_ylabel("Time (ms)")
+    ax.set_title(f"CUDA Operation Breakdown (Absolute Time) - {kernel}")
     ax.legend(title="CUDA API Call", bbox_to_anchor=(1.05, 1), loc='upper left')
     ax.set_xticklabels(ax.get_xticklabels(), rotation=0, ha='center')
     plt.tight_layout()
@@ -104,6 +90,49 @@ def plot_kernel_profile(kernel, input_dir, output_dir, filename):
     # Save
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, filename)
+    plt.savefig(output_path)
+    print(f"Saved plot to {output_path}")
+    plt.close()
+
+def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
+
+    # Load CSV data
+    df = pd.read_csv(csv_path)
+
+    # Validate expected columns
+    if not {'q', 'kernel', 'time'}.issubset(df.columns):
+        raise ValueError("CSV must have columns: q, kernel, time")
+
+    # Compute array size and convert time to nanoseconds
+    df["Size"] = 2 ** df["q"]
+    df["Time (ns)"] = df["time"] * 1e9
+
+    # Sort and group
+    df.sort_values(by=["kernel", "Size"], inplace=True)
+
+    # Plot
+    plt.figure(figsize=(10, 6))
+    for kernel in ["none", "v0", "v1", "v2"]:
+        sub_df = df[df["kernel"] == kernel]
+        if not sub_df.empty:
+            plt.plot(
+                sub_df["Size"],
+                sub_df["Time (ns)"],
+                marker='o',
+                label=kernel.upper()
+            )
+
+    plt.xlabel("Array Size (N = 2^q)")
+    plt.ylabel("Total Execution Time (ns)")
+    plt.title("Total Execution Time vs Array Size")
+    plt.legend()
+    plt.grid(True)
+    plt.xscale("log", base=2)
+    plt.yscale("log")  # Optional: useful if large scale differences
+    plt.tight_layout()
+
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, output_filename)
     plt.savefig(output_path)
     print(f"Saved plot to {output_path}")
     plt.close()
@@ -117,4 +146,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Example usage (hardcoded kernel and filename)
-    plot_kernel_profile("v0", args.input_dir, args.output_dir, "profile_v0.png")
+    plot_kernel_time_breakdown("v0", args.input_dir, args.output_dir, "time_breakdown_v0.png")
+    plot_total_execution_time_vs_size(os.join(args.input_dir, "total_times.log"), args.output_dir, "total_execution_time_vs_size.png")

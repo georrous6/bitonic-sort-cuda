@@ -6,5 +6,4 @@ build/
 *.a
 
 # Ignore NSightly files
-*.sqlite
 *.nsys-rep

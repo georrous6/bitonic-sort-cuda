@@ -1,5 +1,10 @@
+# Ignore build artifacts
 build/
 *.o
 *.so
 *.out
 *.a
+
+# Ignore NSightly files
+*.sqlite
+*.nsys-rep

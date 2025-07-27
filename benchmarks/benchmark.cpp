@@ -105,6 +105,9 @@ int main(int argc, char **argv) {
     int *data = NULL;
     const char *timing_filename = NULL;
 
+    // Warmup CUDA
+    if (wakeup_cuda()) return EXIT_FAILURE;
+
     if (parse_arguments(argc, argv, &data, &q, &timing_filename, &version, &descending, &validate) != EXIT_SUCCESS) {
         return EXIT_FAILURE;
     }

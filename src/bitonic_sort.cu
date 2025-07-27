@@ -2,6 +2,26 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 
+__host__
+int wakeup_cuda(void) {
+    wakeup_kernel<<<1, 1>>>();
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA wakeup error: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
+    }
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA wakeup synchronization error: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+
+__global__
+void wakeup_kernel(void) {}
+
 // Swap elements if needed, based on direction
 __host__ __device__ __forceinline__
 static void compare_and_swap(int *arr, int i, int j, int ascending) {

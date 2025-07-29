@@ -4,6 +4,3 @@ build/
 *.so
 *.out
 *.a
-
-# Ignore NSightly files
-*.nsys-rep

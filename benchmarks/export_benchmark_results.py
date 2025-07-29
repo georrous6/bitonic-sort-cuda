@@ -1,101 +1,10 @@
 import os
-import re
-import sqlite3
 import argparse
 import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def extract_size_from_filename(filename, kernel):
-    pattern = rf"report_{re.escape(kernel)}_(\d+)\.sqlite"
-    match = re.match(pattern, filename)
-    return int(match.group(1)) if match else None
-
-
-def parse_sqlite_report(filepath):
-    query = """
-    WITH per_call_time AS (
-        SELECT
-            nameId,
-            (end - start) AS duration_ns
-        FROM CUPTI_ACTIVITY_KIND_RUNTIME
-    ),
-    agg_stats AS (
-        SELECT
-            nameId,
-            COUNT(*) AS num_calls,
-            SUM(duration_ns) AS total_time_ns
-        FROM per_call_time
-        GROUP BY nameId
-    )
-    SELECT
-        s.value AS Name,
-        a.total_time_ns / 1e6 AS TimeMs  -- Convert to ms
-    FROM agg_stats a
-    JOIN StringIds s ON s.id = a.nameId
-    ORDER BY a.total_time_ns DESC;
-    """
-    with sqlite3.connect(filepath) as conn:
-        df = pd.read_sql_query(query, conn)
-
-    # Clean CUDA API names
-    df["Name"] = df["Name"].str.replace(r"_v\d+$", "", regex=True)
-
-    return df[['Name', 'TimeMs']]
-
-
-def plot_kernel_time_breakdown(kernel, input_dir, output_dir, filename):
-    files = [
-        f for f in os.listdir(input_dir)
-        if f.startswith(f"report_{kernel}_") and f.endswith(".sqlite")
-    ]
-
-    files = sorted(files, key=lambda f: extract_size_from_filename(f, kernel))
-
-    sizes = []
-    op_time_dict = {}
-
-    for f in files:
-        size = extract_size_from_filename(f, kernel)
-        if size is None:
-            continue
-        sizes.append(size)
-        df = parse_sqlite_report(os.path.join(input_dir, f))
-
-        for _, row in df.iterrows():
-            op = row['Name']
-            time_ms = row['TimeMs']
-            if op not in op_time_dict:
-                op_time_dict[op] = []
-            op_time_dict[op].append(time_ms)
-
-    # Pad missing values with 0s
-    for op in op_time_dict:
-        while len(op_time_dict[op]) < len(sizes):
-            op_time_dict[op].append(0.0)
-
-    # Create DataFrame for plotting
-    plot_df = pd.DataFrame(op_time_dict, index=sizes)
-    plot_df.sort_index(inplace=True)
-
-    # Plot
-    ax = plot_df.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='tab20')
-    ax.set_xlabel("Array Size")
-    ax.set_ylabel("Time (ms)")
-    ax.set_title(f"CUDA Operation Breakdown (Absolute Time) - {kernel}")
-    ax.legend(title="CUDA API Call", bbox_to_anchor=(1.05, 1), loc='upper left')
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=0, ha='center')
-    plt.tight_layout()
-
-    # Save
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, filename)
-    plt.savefig(output_path)
-    print(f"Saved plot to {output_path}")
-    plt.close()
-
 def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
-
     # Load CSV data
     df = pd.read_csv(csv_path)
 
@@ -128,7 +37,7 @@ def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
     plt.legend()
     plt.grid(True)
     plt.xscale("log", base=2)
-    plt.yscale("log")  # Optional: useful if large scale differences
+    plt.yscale("log")
     plt.tight_layout()
 
     os.makedirs(output_dir, exist_ok=True)
@@ -138,14 +47,66 @@ def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
     plt.close()
 
 
+def export_speedup_table(csv_path, data_dir, q_value, output_filename):
+    # Load CSV data
+    df = pd.read_csv(csv_path)
+
+    # Validate expected columns
+    if not {'q', 'kernel', 'time'}.issubset(df.columns):
+        raise ValueError("CSV must have columns: q, kernel, time")
+
+    # Filter by q
+    q_df = df[df["q"] == q_value].copy()
+    if q_df.empty:
+        raise ValueError(f"No data found for q = {q_value}")
+
+    # Convert time to milliseconds
+    q_df["Time (ms)"] = q_df["time"] * 1e3
+
+    # Sort kernels by assumed version order
+    def kernel_sort_key(k):
+        if k == "none":
+            return -1
+        if k.startswith("v") and k[1:].isdigit():
+            return int(k[1:])
+        return float('inf')
+
+    q_df.sort_values(by="kernel", key=lambda col: col.map(kernel_sort_key), inplace=True)
+
+    # Compute speedups
+    times = q_df["Time (ms)"].values
+    kernels = q_df["kernel"].tolist()
+
+    step_speedups = [""]
+    cumulative_speedups = [1.0]
+
+    for i in range(1, len(times)):
+        step = times[i - 1] / times[i]
+        cum = cumulative_speedups[i - 1] * step
+        step_speedups.append(f"{step:.2f}")
+        cumulative_speedups.append(cum)
+
+    # Prepare output table
+    result_df = pd.DataFrame({
+        "Kernel Version": [k.upper() for k in kernels],
+        "Time (ms)": [f"{t:.3f}" for t in times],
+        "Step Speedup": step_speedups,
+        "Cumulative Speedup": [f"{s:.2f}" if isinstance(s, float) else s for s in cumulative_speedups]
+    })
+
+    # Export
+    os.makedirs(data_dir, exist_ok=True)
+    output_path = os.path.join(data_dir, output_filename)
+    result_df.to_csv(output_path, index=False)
+    print(f"Saved speedup table to {output_path}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_dir", help="Directory containing report_<kernel>_<size>.sqlite files")
-    parser.add_argument("output_dir", help="Directory to save plots")
-
+    parser.add_argument("csv_path", help="Full path to input CSV file")
+    parser.add_argument("plot_dir", help="Directory to save plot (.png)")
+    parser.add_argument("data_dir", help="Directory to save data files (.dat)")
     args = parser.parse_args()
 
-    # Example usage (hardcoded kernel and filename)
-    plot_kernel_time_breakdown("v0", args.input_dir, args.output_dir, "time_breakdown_v0.png")
-    plot_kernel_time_breakdown("v1", args.input_dir, args.output_dir, "time_breakdown_v1.png")
-    plot_total_execution_time_vs_size(os.path.join(args.input_dir, "total_times.log"), args.output_dir, "total_execution_time_vs_size.png")
+    plot_total_execution_time_vs_size(args.csv_path, args.plot_dir, "execution_time_vs_size.png")
+    export_speedup_table(args.csv_path, args.data_dir, 20, "speedup_table.dat")

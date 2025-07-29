@@ -22,13 +22,11 @@ fi
 cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 
 # --- Specify report and log directories
-LOGS_DIR="logs"
-REPORTS_DIR="reports"
+LOGS_DIR="benchmarks/logs"
 PLOTS_DIR="docs/figures"
-TIMING_FILE="total_times.log"
-rm -rf "$REPORTS_DIR"
+TIMING_FILE="$LOGS_DIR/total_times.log"
+rm -rf "$LOGS_DIR" "$PLOTS_DIR"
 mkdir -p "$LOGS_DIR"
-mkdir -p "$REPORTS_DIR"
 mkdir -p "$PLOTS_DIR"
 
 # --- Load required modules ---
@@ -60,8 +58,6 @@ echo -e "\n=== Checking CUDA environment variables ==="
 echo "CUDA_HOME=$CUDA_HOME"
 echo "CUDA_PATH=$CUDA_PATH"
 export CUDA_HOME=$CUDA_HOME
-#export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-#export LIBRARY_PATH=$CUDA_HOME/lib64:$LIBRARY_PATH
 
 # --- Check if nvcc is available ---
 echo -e "\n=== Checking nvcc compiler ==="
@@ -84,12 +80,7 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-# --- Set parameters ---
-
-# --- Run profiling with Nsight Systems ---
-echo -e "\n=== Profiling with Nsight Systems ==="
-
-KERNELS=("v0" "v1")
+KERNELS=("none" "v0" "v1")
 Q_MIN=10
 Q_MAX=20
 
@@ -100,22 +91,11 @@ for KERNEL in "${KERNELS[@]}"; do
 
         echo -e "\n --- Running benchmark for kernel $KERNEL with q=$q ---"
 
-        # Run the benchmark and profile it
-        nsys profile -t cuda --stats=true -o "$REPORTS_DIR/report_${KERNEL}_${q}" \
-        "$EXECUTABLE" "$q" --kernel "$KERNEL" --timing-file "$REPORTS_DIR/$TIMING_FILE"
+        "$EXECUTABLE" "$q" --kernel "$KERNEL" --timing-file "$TIMING_FILE"
     done
 done
 
-# --- Run benchmarks for CPU-only version ---
-for q in $(seq $Q_MIN $Q_MAX); do
-    echo -e "\n --- Running CPU-only benchmark with q=$q ---"
-    "$EXECUTABLE" "$q" --kernel none --timing-file "$REPORTS_DIR/$TIMING_FILE"
-done
-
-# --- Remove nsys-rep files
-rm "$REPORTS_DIR"/*.nsys-rep
-
 # --- Export results ---
-python3 benchmarks/export_benchmark_results.py "$REPORTS_DIR" "$PLOTS_DIR"
+python3 benchmarks/export_benchmark_results.py "$TIMING_FILE" "$PLOTS_DIR"
 
 echo -e "\nAll benchmarks completed successfully."

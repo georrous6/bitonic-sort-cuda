@@ -3,6 +3,7 @@
 #include "kernel.cuh"
 #include <stdio.h>
 #include <cuda_runtime.h>
+#include <algorithm>
 #include "config.cuh"
 
 
@@ -13,6 +14,7 @@ int wakeup_cuda(void) {
 }
 
 
+// Just a serial implementation of bitonic sort for starting point
 __host__
 static void bitonic_sort_serial(int *data, int n, int ascending) {
     for (int size = 2; size <= n; size <<= 1) {
@@ -25,6 +27,16 @@ static void bitonic_sort_serial(int *data, int n, int ascending) {
                 }
             }
         }
+    }
+}
+
+
+__host__
+static void sort_serial(int *data, int n, int ascending) {
+    if (ascending) {
+        std::sort(data, data + n);
+    } else {
+        std::sort(data, data + n, std::greater<int>());
     }
 }
 
@@ -131,7 +143,7 @@ int bitonic_sort_cuda(int *data, int n, int ascending, kernel_version_t kernel_v
     // Kernel launch
     switch (kernel_version) {
         case KERNEL_NONE:
-            bitonic_sort_serial(data, n, ascending);
+            sort_serial(data, n, ascending);
             break;
         case KERNEL_V0:
             status = bitonic_sort_v0(data, n, ascending);
@@ -149,7 +161,7 @@ int bitonic_sort_cuda(int *data, int n, int ascending, kernel_version_t kernel_v
 
     if (status) {
         fprintf(stderr, "Fallback to serial bitonic sort.\n");
-        bitonic_sort_serial(data, n, ascending);
+        sort_serial(data, n, ascending);
         return EXIT_FAILURE;
     }
 

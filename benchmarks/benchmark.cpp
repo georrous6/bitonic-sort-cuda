@@ -120,10 +120,10 @@ int main(int argc, char **argv) {
     int status = bitonic_sort_cuda(data, n, !descending, version);
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+    double elapsed_us = (end.tv_sec - start.tv_sec) * 1e6 + (end.tv_nsec - start.tv_nsec) / 1e3;
 
     if (timing_filename) {
-        if (save_timing_data(timing_filename, q, version, elapsed)) {
+        if (save_timing_data(timing_filename, q, version, elapsed_us)) {
             free(data);
             return EXIT_FAILURE;
         }

@@ -39,7 +39,11 @@ int test_case(int n, int ascending, kernel_version_t version) {
     }
 
     qsort(sorted_data, n, sizeof(int), ascending ? cmp_asc : cmp_desc);
-    bitonic_sort_cuda(data, n, ascending, version);
+    if (bitonic_sort_cuda(data, n, ascending, version)) {
+        free(data);
+        free(sorted_data);
+        return EXIT_FAILURE;
+    }
 
     int status = EXIT_SUCCESS;
 

@@ -65,4 +65,4 @@ fi
 
 "$EXECUTABLE"
 
-echo "Submitted tests completed successfully."
+echo -e "\nSubmitted tests completed successfully."

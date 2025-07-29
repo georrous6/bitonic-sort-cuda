@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "bitonic_sort_cuda.cuh"
 
-#define NTESTS 12
+#define NTESTS 15
 
 #define BOLD_BLUE "\033[1;34m"
 #define BOLD_GREEN "\033[1;32m"
@@ -67,7 +67,7 @@ int main(void) {
 
     srand(0); // Seed for reproducibility
     
-    for (int i = 10; i < NTESTS + 10; i++) {
+    for (int i = 5; i < NTESTS + 5; i++) {
         int n = 1 << i;
         int ascending = i % 2;
         kernel_version_t version = (kernel_version_t)(i % 3);

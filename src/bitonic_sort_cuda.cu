@@ -3,6 +3,7 @@
 #include "kernel.cuh"
 #include <stdio.h>
 #include <cuda_runtime.h>
+#include "config.cuh"
 
 
 __host__
@@ -13,14 +14,14 @@ int wakeup_cuda(void) {
 
 
 __host__
-static void bitonic_sort_serial(int *arr, int n, int ascending) {
+static void bitonic_sort_serial(int *data, int n, int ascending) {
     for (int size = 2; size <= n; size <<= 1) {
-        for (int stride = size >> 1; stride > 0; stride >>= 1) {
+        for (int step = size >> 1; step > 0; step >>= 1) {
             for (int i = 0; i < n; i++) {
-                int j = i ^ stride;
+                int j = i ^ step;
                 if (j > i) {
                     int is_ascending = ((i & size) == 0) ? ascending : !ascending;
-                    compare_and_swap(arr, i, j, is_ascending);
+                    compare_and_swap(data, i, j, is_ascending);
                 }
             }
         }
@@ -31,8 +32,7 @@ static void bitonic_sort_serial(int *arr, int n, int ascending) {
 __host__
 static int bitonic_sort_v0(int *host_data, int n, int ascending) {
 
-    int threadsPerBlock = 256;
-    int numBlocks = (n + threadsPerBlock - 1) / threadsPerBlock;
+    int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int *device_data = NULL;
 
     if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS) {
@@ -43,7 +43,7 @@ static int bitonic_sort_v0(int *host_data, int n, int ascending) {
         for (int step = size >> 1; step > 0; step >>= 1) {
 
             // Launch the kernel
-            kernel_v0<<<numBlocks, threadsPerBlock>>>(device_data, n, ascending, size, step);
+            kernel_v0<<<numBlocks, BLOCK_SIZE>>>(device_data, n, ascending, size, step);
 
             if (post_launch_barrier_and_check()) {
                 cudaFree(device_data);
@@ -65,9 +65,51 @@ static int bitonic_sort_v0(int *host_data, int n, int ascending) {
 
 __host__
 static int bitonic_sort_v1(int *host_data, int n, int ascending) {
-    // Placeholder for future kernel version 1 implementation
-    fprintf(stderr, "Kernel version 1 is not implemented yet.\n");
-    return EXIT_FAILURE;
+    // For simplicity, require n to be divisible by BLOCK_SIZE * numBlocks
+    int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int chunk_size   = n / numBlocks;
+    int max_step  = chunk_size >> 1;  // half block size
+
+    int *device_data = nullptr;
+    if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS)
+        return EXIT_FAILURE;
+
+    // 1) initial alternating sort in each block
+    kernel_v1_alternating_sort<<<numBlocks, BLOCK_SIZE>>>(device_data, chunk_size, ascending);
+    if (post_launch_barrier_and_check()) {
+        cudaFree(device_data);
+        return EXIT_FAILURE;
+    }
+
+    // 2) merge across blocks
+    for (int size = chunk_size << 1; size <= n; size <<= 1) {
+        // global compare steps from size/2 down to chunk_size/2
+        for (int step = size >> 1; step >= max_step; step >>= 1) {
+            kernel_v0<<<numBlocks, BLOCK_SIZE>>>(device_data, n, ascending, size, step);
+            if (post_launch_barrier_and_check()) {
+                cudaFree(device_data);
+                return EXIT_FAILURE;
+            }
+        }
+        // 3) intra-block refine for next bitonic run
+        kernel_v1_intra_block_sort<<<numBlocks, BLOCK_SIZE>>>(device_data,
+                                                              chunk_size,
+                                                              ascending,
+                                                              size,
+                                                              max_step);
+        if (post_launch_barrier_and_check()) {
+            cudaFree(device_data);
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (device_to_host_data(host_data, n, device_data) != EXIT_SUCCESS) {
+        cudaFree(device_data);
+        return EXIT_FAILURE;
+    }
+
+    cudaFree(device_data);
+    return EXIT_SUCCESS;
 }
 
 

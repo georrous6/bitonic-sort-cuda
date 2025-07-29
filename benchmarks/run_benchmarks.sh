@@ -89,7 +89,7 @@ fi
 # --- Run profiling with Nsight Systems ---
 echo -e "\n=== Profiling with Nsight Systems ==="
 
-KERNELS=("v0")
+KERNELS=("v0" "v1")
 Q_MIN=10
 Q_MAX=20
 

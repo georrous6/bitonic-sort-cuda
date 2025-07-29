@@ -41,7 +41,7 @@ __global__ void kernel_v1_alternating_sort(int *data, int n, int chunk_size, int
 
 
 __global__ 
-void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending, int step_start) {
+void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending, int size, int step_start) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
 
@@ -49,7 +49,7 @@ void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending,
         for (int i = idx; i < n; i += stride) {
             int j  = i ^ step;
             if (j > i) {
-                int is_asc = ((i & n) == 0) ? ascending : !ascending;
+                int is_asc = ((i & size) == 0) ? ascending : !ascending;
                 compare_and_swap(data, i, j, is_asc);
             }
         }

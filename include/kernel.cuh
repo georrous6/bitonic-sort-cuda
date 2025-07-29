@@ -26,6 +26,6 @@ void kernel_v1_alternating_sort(int *data, int n, int chunk_size, int ascending)
 
 
 __global__
-void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending, int step_start);
+void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending, int size, int step_start);
 
 #endif

@@ -92,8 +92,8 @@ static int bitonic_sort_v1(int *host_data, int n, int ascending) {
             }
         }
         // 3) intra-block refine for next bitonic run
-        kernel_v1_intra_block_sort<<<numBlocks, BLOCK_SIZE>>>(device_data, n, chunk_size, ascending, max_step);
-        
+        kernel_v1_intra_block_sort<<<numBlocks, BLOCK_SIZE>>>(device_data, n, chunk_size, ascending, size, max_step);
+
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

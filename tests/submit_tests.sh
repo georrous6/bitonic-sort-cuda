@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=bitonic_benchmark
+#SBATCH --job-name=bitonic_test
 #SBATCH --partition=gpu
 #SBATCH --output=slurm.out
 #SBATCH --time=00:05:00
@@ -21,28 +21,10 @@ fi
 # --- Move to the project directory ---
 cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 
-# --- Specify report and log directories
-LOGS_DIR="benchmarks/logs"
-PLOTS_DIR="docs/figures"
-DATA_DIR="docs/data"
-TIMING_FILE="$LOGS_DIR/execution_times.log"
-rm -rf "$LOGS_DIR" "$PLOTS_DIR"
-mkdir -p "$LOGS_DIR"
-mkdir -p "$PLOTS_DIR"
-
 # --- Load required modules ---
 module purge
-module load gcc/12.2.0 cuda/12.2.1-bxtxsod python/3.10.8-cidwh6y
+module load gcc/12.2.0 cuda/12.2.1-bxtxsod
 module list
-
-# --- Create python environment ---
-if [ ! -d ~/grousenv ]; then
-    python3 -m venv ~/grousenv
-    source ~/grousenv/bin/activate
-    pip install numpy pandas matplotlib
-else
-    source ~/grousenv/bin/activate
-fi
 
 # --- Check for CUDA-compatible GPU ---
 echo -e "\n=== Checking for CUDA-compatible GPU ==="
@@ -73,7 +55,7 @@ make clean
 make
 
 # --- Define executable path ---
-EXECUTABLE="$PROJECT_DIR/build/benchmarks"
+EXECUTABLE="$PROJECT_DIR/build/tests"
 
 # --- Check if executable exists ---
 if [ ! -x "$EXECUTABLE" ]; then
@@ -81,22 +63,6 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-KERNELS=("none" "v0" "v1")
-Q_MIN=10
-Q_MAX=20
+"$EXECUTABLE"
 
-for KERNEL in "${KERNELS[@]}"; do
-    
-    # Define sizes to test
-    for q in $(seq $Q_MIN $Q_MAX); do
-
-        echo "--- Running benchmark for kernel $KERNEL with q=$q ---"
-
-        "$EXECUTABLE" "$q" --kernel "$KERNEL" --timing-file "$TIMING_FILE"
-    done
-done
-
-# --- Export results ---
-python3 benchmarks/export_benchmark_results.py "$TIMING_FILE" "$PLOTS_DIR" "$DATA_DIR"
-
-echo -e "\nAll benchmarks completed successfully."
+echo "Submitted tests completed successfully."

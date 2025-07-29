@@ -29,7 +29,7 @@ TEST_BIN    = $(BUILD_DIR)/tests
 # Benchmark setup
 BENCHMARK_SRC  = $(BENCH_DIR)/benchmark.cpp
 BENCHMARK_OBJ  = $(BUILD_DIR)/benchmark.o
-BENCHMARK_BIN  = $(BUILD_DIR)/benchmark
+BENCHMARK_BIN  = $(BUILD_DIR)/benchmarks
 
 # Default target
 all: $(BUILD_DIR) $(LIB_PATH) $(TEST_BIN) $(BENCHMARK_BIN)

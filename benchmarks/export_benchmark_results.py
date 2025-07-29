@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
+def plot_execution_time_vs_size(csv_path, output_dir, output_filename):
     # Load CSV data
     df = pd.read_csv(csv_path)
 
@@ -12,12 +12,10 @@ def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
     if not {'q', 'kernel', 'time'}.issubset(df.columns):
         raise ValueError("CSV must have columns: q, kernel, time")
 
-    # Compute array size and convert time to nanoseconds
-    df["Size"] = 2 ** df["q"]
-    df["Time (ns)"] = df["time"] * 1e9
+    # Compute array size and convert time to milliseconds
 
     # Sort and group
-    df.sort_values(by=["kernel", "Size"], inplace=True)
+    df.sort_values(by=["kernel", "q"], inplace=True)
 
     # Plot
     plt.figure(figsize=(10, 6))
@@ -25,8 +23,8 @@ def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
         sub_df = df[df["kernel"] == kernel]
         if not sub_df.empty:
             plt.plot(
-                sub_df["Size"],
-                sub_df["Time (ns)"],
+                sub_df["q"],
+                sub_df["time"],
                 marker='o',
                 label=kernel.upper()
             )
@@ -36,8 +34,9 @@ def plot_total_execution_time_vs_size(csv_path, output_dir, output_filename):
     plt.title("Total Execution Time vs Array Size")
     plt.legend()
     plt.grid(True)
-    plt.xscale("log", base=2)
-    plt.yscale("log")
+    q_values = sorted(df["q"].unique())
+    plt.xticks(ticks=q_values, labels=[f"$2^{{{q}}}$" for q in q_values])
+    plt.yscale("log", base=10)
     plt.tight_layout()
 
     os.makedirs(output_dir, exist_ok=True)
@@ -60,9 +59,6 @@ def export_speedup_table(csv_path, data_dir, q_value, output_filename):
     if q_df.empty:
         raise ValueError(f"No data found for q = {q_value}")
 
-    # Convert time to milliseconds
-    q_df["Time (ms)"] = q_df["time"] * 1e3
-
     # Sort kernels by assumed version order
     def kernel_sort_key(k):
         if k == "none":
@@ -74,7 +70,7 @@ def export_speedup_table(csv_path, data_dir, q_value, output_filename):
     q_df.sort_values(by="kernel", key=lambda col: col.map(kernel_sort_key), inplace=True)
 
     # Compute speedups
-    times = q_df["Time (ms)"].values
+    times = q_df["time"].values
     kernels = q_df["kernel"].tolist()
 
     step_speedups = [""]
@@ -108,5 +104,5 @@ if __name__ == "__main__":
     parser.add_argument("data_dir", help="Directory to save data files (.dat)")
     args = parser.parse_args()
 
-    plot_total_execution_time_vs_size(args.csv_path, args.plot_dir, "execution_time_vs_size.png")
+    plot_execution_time_vs_size(args.csv_path, args.plot_dir, "execution_time_vs_size.png")
     export_speedup_table(args.csv_path, args.data_dir, 20, "speedup_table.dat")

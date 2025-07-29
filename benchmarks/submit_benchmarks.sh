@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=bitonic_benchmark
 #SBATCH --partition=gpu
-#SBATCH --output=logs/slurm.out
-#SBATCH --time=01:00:00
+#SBATCH --output=slurm.out
+#SBATCH --time=00:05:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
@@ -24,7 +24,8 @@ cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 # --- Specify report and log directories
 LOGS_DIR="benchmarks/logs"
 PLOTS_DIR="docs/figures"
-TIMING_FILE="$LOGS_DIR/total_times.log"
+DATA_DIR="docs/data"
+TIMING_FILE="$LOGS_DIR/execution_times.log"
 rm -rf "$LOGS_DIR" "$PLOTS_DIR"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$PLOTS_DIR"
@@ -89,13 +90,13 @@ for KERNEL in "${KERNELS[@]}"; do
     # Define sizes to test
     for q in $(seq $Q_MIN $Q_MAX); do
 
-        echo -e "\n --- Running benchmark for kernel $KERNEL with q=$q ---"
+        echo "--- Running benchmark for kernel $KERNEL with q=$q ---"
 
         "$EXECUTABLE" "$q" --kernel "$KERNEL" --timing-file "$TIMING_FILE"
     done
 done
 
 # --- Export results ---
-python3 benchmarks/export_benchmark_results.py "$TIMING_FILE" "$PLOTS_DIR"
+python3 benchmarks/export_benchmark_results.py "$TIMING_FILE" "$PLOTS_DIR" "$DATA_DIR"
 
 echo -e "\nAll benchmarks completed successfully."

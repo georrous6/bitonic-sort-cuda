@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
 #include <algorithm>
+#include <functional>
 #include "config.cuh"
 
 

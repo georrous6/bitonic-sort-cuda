@@ -5,7 +5,7 @@
 
 
 __global__ 
-static void kernel_intra_block_sort_v2(int *data, int n, int ascending) {
+void kernel_intra_block_sort_v2(int *data, int n, int ascending) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -38,7 +38,7 @@ static void kernel_intra_block_sort_v2(int *data, int n, int ascending) {
 
 
 __global__
-static void kernel_intra_block_refine_v2(int *data, int n, int ascending, int size) {
+void kernel_intra_block_refine_v2(int *data, int n, int ascending, int size) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -66,7 +66,6 @@ static void kernel_intra_block_refine_v2(int *data, int n, int ascending, int si
     // Copy data back to global memory
     data[offset + tid] = s_data[tid];
 }
-
 
 
 __host__

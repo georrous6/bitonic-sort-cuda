@@ -51,6 +51,8 @@ int test_case(int q, int ascending, kernel_version_t version) {
     // Print sorted array
     for (int i = 0; i < n; i++) {
         if (sorted_data[i] != data[i]) {
+            printf(BOLD_RED "Mismatch at index %d: expected %d, got %d\n" RESET, i, sorted_data[i], data[i]);
+            fflush(stdout);
             status = EXIT_FAILURE;
             break;
         }

@@ -13,15 +13,15 @@ void fill_random(int *arr, int n) {
 }
 
 
-kernel_version_t parse_kernel_version(const char *arg) {
-    if (strcmp(arg, "v0") == 0) return KERNEL_V0;
-    if (strcmp(arg, "v1") == 0) return KERNEL_V1;
-    if (strcmp(arg, "v2") == 0) return KERNEL_V2;
-    return KERNEL_NONE;
+bitonic_version_t parse_kernel_version(const char *arg) {
+    if (strcmp(arg, "v0") == 0) return VERSION_V0;
+    if (strcmp(arg, "v1") == 0) return VERSION_V1;
+    if (strcmp(arg, "v2") == 0) return VERSION_V2;
+    return VERSION_SERIAL;
 }
 
 
-int parse_arguments(int argc, char **argv, int **data, int *q, const char **timing_filename, kernel_version_t *version, int *descending, int *validate) {
+int parse_arguments(int argc, char **argv, int **data, int *q, const char **timing_filename, bitonic_version_t *version, int *descending, int *validate) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <q> [--kernel v0|v1|v2|none] [--desc] [--timing-file <file>] [--no-validate]\n", argv[0]);
         return EXIT_FAILURE;
@@ -40,14 +40,14 @@ int parse_arguments(int argc, char **argv, int **data, int *q, const char **timi
         return EXIT_FAILURE;
     }
 
-    *version = KERNEL_NONE;
+    *version = VERSION_SERIAL;
     *descending = 0;
     *validate = 1;  // default: validate
 
     for (int i = 2; i < argc; ++i) {
         if (strcmp(argv[i], "--kernel") == 0 && i + 1 < argc) {
             *version = parse_kernel_version(argv[i + 1]);
-            if (*version == KERNEL_NONE && strcmp(argv[i + 1], "none") != 0) {
+            if (*version == VERSION_SERIAL && strcmp(argv[i + 1], "none") != 0) {
                 fprintf(stderr, "Invalid kernel version: %s. Falling back to serial.\n", argv[i + 1]);
             }
             i++;
@@ -68,7 +68,7 @@ int parse_arguments(int argc, char **argv, int **data, int *q, const char **timi
 }
 
 
-int save_timing_data(const char *filename, int q, kernel_version_t version, double time_ms) {
+int save_timing_data(const char *filename, int q, bitonic_version_t version, double time_ms) {
     FILE *file = fopen(filename, "a");
     if (!file) {
         fprintf(stderr, "Could not open file %s for writing.\n", filename);
@@ -101,7 +101,7 @@ int validate_sort(int *arr, int n, int ascending) {
 
 int main(int argc, char **argv) {
     int q, descending, validate;
-    kernel_version_t version;
+    bitonic_version_t version;
     int *data = NULL;
     const char *timing_filename = NULL;
 

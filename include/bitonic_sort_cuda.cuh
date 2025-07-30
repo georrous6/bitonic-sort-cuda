@@ -4,13 +4,14 @@
 #include <cuda_runtime.h>
 
 typedef enum {
-    KERNEL_NONE = 0,
-    KERNEL_V0 = 1,
-    KERNEL_V1 = 2,
-    KERNEL_V2 = 3
-} kernel_version_t;
+    VERSION_SERIAL = 0,
+    VERSION_V0 = 1,
+    VERSION_V1 = 2,
+    VERSION_V2 = 3
+} bitonic_version_t;
 
-__host__ int bitonic_sort_cuda(int *data, int n, int ascending, kernel_version_t version);
+
+__host__ int bitonic_sort_cuda(int *data, int n, int ascending, bitonic_version_t version);
 
 
 __host__ int wakeup_cuda(void);

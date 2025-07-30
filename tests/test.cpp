@@ -20,7 +20,7 @@ int cmp_desc(const void *a, const void *b) {
 }
 
 
-int test_case(int q, int ascending, kernel_version_t version) {
+int test_case(int q, int ascending, bitonic_version_t version) {
 
     printf(BOLD_BLUE "Running test case with q = %d, ascending = %d, kernel version = %d ...\n" RESET, q, ascending, version - 1);
     fflush(stdout);
@@ -73,13 +73,13 @@ int main(void) {
 
     if (print_cuda_device_info()) return EXIT_FAILURE;
 
-    for (int v = KERNEL_V0; v <= KERNEL_V2; v++) {
+    for (int v = VERSION_V0; v <= VERSION_V2; v++) {
         
         for (int q = 1; q <= Q_MAX; q++) {
             int ascending = q % 2;
             n_tests++;
 
-            if (test_case(q, ascending, (kernel_version_t)v) != EXIT_SUCCESS) {
+            if (test_case(q, ascending, (bitonic_version_t)v) != EXIT_SUCCESS) {
                 printf(BOLD_RED "Failed\n" RESET); 
                 fflush(stdout);
             }

@@ -79,7 +79,8 @@ void kernel_v2_intra_block_sort(int *data, int n, int chunk_size, int ascending)
             for (int i = tid; i < chunk_size; i += blockDim.x) {
                 int j = i ^ step;
                 if (j > i) {
-                    int is_asc = ((i & size) == 0) ? ascending : !ascending;
+                    int global_id = block_start + i;
+                    int is_asc = ((global_id & size) == 0) ? ascending : !ascending;
                     compare_and_swap(s_data, i, j, is_asc);
                 }
             }
@@ -114,7 +115,8 @@ void kernel_v2_intra_block_refine(int *data, int n, int chunk_size, int ascendin
         for (int i = tid; i < chunk_size; i += blockDim.x) {
             int j  = i ^ step;
             if (j > i) {
-                int is_asc = ((i & size) == 0) ? ascending : !ascending;
+                int global_id = block_start + i;
+                int is_asc = ((global_id & size) == 0) ? ascending : !ascending;
                 compare_and_swap(s_data, i, j, is_asc);
             }
         }

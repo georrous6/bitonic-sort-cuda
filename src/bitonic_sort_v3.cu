@@ -15,7 +15,7 @@ static void kernel_compare_and_swap_v3(int *data,
 
     int blockPair = tid >> log2step;
     int offset    = tid & (step - 1);
-    int base = blockPair << step;
+    int base = blockPair << (log2step + 1);
     int i    = base + offset;
     int j    = i ^ step;  // guaranteed j>i
 

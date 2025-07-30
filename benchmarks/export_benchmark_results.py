@@ -2,6 +2,7 @@ import os
 import argparse
 import matplotlib.pyplot as plt
 import pandas as pd
+from itertools import cycle
 
 
 def plot_execution_time_vs_size(csv_path, output_dir, output_filename):
@@ -9,31 +10,48 @@ def plot_execution_time_vs_size(csv_path, output_dir, output_filename):
     df = pd.read_csv(csv_path)
 
     # Validate expected columns
-    if not {'q', 'kernel', 'time'}.issubset(df.columns):
-        raise ValueError("CSV must have columns: q, kernel, time")
+    if not {'q', 'kernel', 'time_ms'}.issubset(df.columns):
+        raise ValueError("CSV must have columns: q, kernel, time_ms")
 
-    # Compute array size and convert time to milliseconds
+    # Check for valid time values
+    if (df["time_ms"] <= 0).any():
+        raise ValueError("time_ms must be strictly positive for log-scale plotting.")
 
     # Sort and group
     df.sort_values(by=["kernel", "q"], inplace=True)
 
+    # Determine unique kernel versions and sort them meaningfully
+    def kernel_sort_key(k):
+        if k == "none":
+            return -1
+        if k.startswith("v") and k[1:].isdigit():
+            return int(k[1:])
+        return float('inf')
+
+    kernel_versions = sorted(df["kernel"].unique(), key=kernel_sort_key)
+
+    # Marker styles (repeats if more than 10 kernels)
+    marker_styles = cycle(['o', 's', '^', 'v', 'D', '*', 'P', 'X', '<', '>'])
+
     # Plot
     plt.figure(figsize=(10, 6))
-    for kernel in ["none", "v0", "v1", "v2"]:
+    for kernel in kernel_versions:
         sub_df = df[df["kernel"] == kernel]
         if not sub_df.empty:
+            marker = next(marker_styles)
             plt.plot(
                 sub_df["q"],
-                sub_df["time"],
-                marker='o',
+                sub_df["time_ms"],
+                marker=marker,
                 label=kernel.upper()
             )
 
     plt.xlabel("Array Size (N = 2^q)")
-    plt.ylabel("Total Execution Time (ns)")
+    plt.ylabel("Total Execution Time (ms)")
     plt.title("Total Execution Time vs Array Size")
     plt.legend()
     plt.grid(True)
+
     q_values = sorted(df["q"].unique())
     plt.xticks(ticks=q_values, labels=[f"$2^{{{q}}}$" for q in q_values])
     plt.yscale("log", base=10)
@@ -51,8 +69,8 @@ def export_speedup_table(csv_path, data_dir, q_value, output_filename):
     df = pd.read_csv(csv_path)
 
     # Validate expected columns
-    if not {'q', 'kernel', 'time'}.issubset(df.columns):
-        raise ValueError("CSV must have columns: q, kernel, time")
+    if not {'q', 'kernel', 'time_ms'}.issubset(df.columns):
+        raise ValueError("CSV must have columns: q, kernel, time_ms")
 
     # Filter by q
     q_df = df[df["q"] == q_value].copy()
@@ -70,7 +88,7 @@ def export_speedup_table(csv_path, data_dir, q_value, output_filename):
     q_df.sort_values(by="kernel", key=lambda col: col.map(kernel_sort_key), inplace=True)
 
     # Compute speedups
-    times = q_df["time"].values
+    times = q_df["time_ms"].values
     kernels = q_df["kernel"].tolist()
 
     step_speedups = [""]

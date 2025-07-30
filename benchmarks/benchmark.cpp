@@ -68,7 +68,7 @@ int parse_arguments(int argc, char **argv, int **data, int *q, const char **timi
 }
 
 
-int save_timing_data(const char *filename, int q, kernel_version_t version, double time) {
+int save_timing_data(const char *filename, int q, kernel_version_t version, double time_ms) {
     FILE *file = fopen(filename, "a");
     if (!file) {
         fprintf(stderr, "Could not open file %s for writing.\n", filename);
@@ -77,12 +77,12 @@ int save_timing_data(const char *filename, int q, kernel_version_t version, doub
 
     // Write the header if the file is empty
     if (ftell(file) == 0) {
-        fprintf(file, "q,kernel,time\n");
+        fprintf(file, "q,kernel,time_ms\n");
     }
 
     // Write the timing data
     const char *version_str[] = { "none", "v0", "v1", "v2" };
-    fprintf(file, "%d,%s,%lf\n", q, version_str[version], time);
+    fprintf(file, "%d,%s,%lf\n", q, version_str[version], time_ms);
     fclose(file);
     return EXIT_SUCCESS;
 }
@@ -120,10 +120,10 @@ int main(int argc, char **argv) {
     int status = bitonic_sort_cuda(data, n, !descending, version);
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    double elapsed_us = (end.tv_sec - start.tv_sec) * 1e6 + (end.tv_nsec - start.tv_nsec) / 1e3;
+    double elapsed_ms = (end.tv_sec - start.tv_sec) * 1e3 + (end.tv_nsec - start.tv_nsec) / 1e6;
 
     if (timing_filename) {
-        if (save_timing_data(timing_filename, q, version, elapsed_us)) {
+        if (save_timing_data(timing_filename, q, version, elapsed_ms)) {
             free(data);
             return EXIT_FAILURE;
         }

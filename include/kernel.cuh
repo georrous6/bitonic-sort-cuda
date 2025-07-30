@@ -7,9 +7,9 @@ __global__
 void wakeup_kernel(void);
 
 
-__host__ __device__ __forceinline__
+__device__ __forceinline__
 void compare_and_swap(int *arr, int i, int j, int ascending) {
-    if ((ascending && arr[i] > arr[j]) || (!ascending && arr[i] < arr[j])) {
+    if ((arr[i] > arr[j]) == ascending) {
         int temp = arr[i];
         arr[i] = arr[j];
         arr[j] = temp;
@@ -18,14 +18,22 @@ void compare_and_swap(int *arr, int i, int j, int ascending) {
 
 
 __global__ 
-void kernel_v0(int *data, int n, int ascending, int size, int step);
+void kernel_v0_compare_and_swap(int *data, int n, int ascending, int size, int step);
 
 
 __global__
-void kernel_v1_alternating_sort(int *data, int n, int chunk_size, int ascending);
+void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending);
 
 
 __global__
-void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending, int size, int step_start);
+void kernel_v1_intra_block_refine(int *data, int n, int chunk_size, int ascending, int size);
+
+
+__global__
+void kernel_v2_intra_block_sort(int *data, int n, int chunk_size, int ascending);
+
+
+__global__
+void kernel_v2_intra_block_refine(int *data, int n, int chunk_size, int ascending, int size);
 
 #endif

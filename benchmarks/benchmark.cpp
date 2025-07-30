@@ -17,13 +17,14 @@ bitonic_version_t parse_kernel_version(const char *arg) {
     if (strcmp(arg, "v0") == 0) return VERSION_V0;
     if (strcmp(arg, "v1") == 0) return VERSION_V1;
     if (strcmp(arg, "v2") == 0) return VERSION_V2;
+    if (strcmp(arg, "v3") == 0) return VERSION_V3;
     return VERSION_SERIAL;
 }
 
 
 int parse_arguments(int argc, char **argv, int **data, int *q, const char **timing_filename, bitonic_version_t *version, int *descending, int *validate) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <q> [--kernel v0|v1|v2|none] [--desc] [--timing-file <file>] [--no-validate]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <q> [--kernel v0|v1|v2|v3|none] [--desc] [--timing-file <file>] [--no-validate]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -81,7 +82,7 @@ int save_timing_data(const char *filename, int q, bitonic_version_t version, dou
     }
 
     // Write the timing data
-    const char *version_str[] = { "none", "v0", "v1", "v2" };
+    const char *version_str[] = { "none", "v0", "v1", "v2", "v3" };
     fprintf(file, "%d,%s,%lf\n", q, version_str[version], time_ms);
     fclose(file);
     return EXIT_SUCCESS;

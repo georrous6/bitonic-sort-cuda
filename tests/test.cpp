@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "bitonic_sort_cuda.cuh"
 
-#define Q_MAX 26
+#define Q_MAX 25
 
 #define BOLD_BLUE "\033[1;34m"
 #define BOLD_GREEN "\033[1;32m"
@@ -73,7 +73,7 @@ int main(void) {
 
     if (print_cuda_device_info()) return EXIT_FAILURE;
 
-    for (int v = VERSION_V0; v <= VERSION_V2; v++) {
+    for (int v = VERSION_V0; v <= VERSION_V3; v++) {
         
         for (int q = 1; q <= Q_MAX; q++) {
             int ascending = q % 2;

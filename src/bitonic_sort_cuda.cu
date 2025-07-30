@@ -3,6 +3,7 @@
 #include "bitonic_sort_v0.cuh"
 #include "bitonic_sort_v1.cuh"
 #include "bitonic_sort_v2.cuh"
+#include "bitonic_sort_v3.cuh"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -109,6 +110,9 @@ int bitonic_sort_cuda(int *data, int n, int ascending, bitonic_version_t kernel_
             break;
         case VERSION_V2:
             status = bitonic_sort_v2(data, n, ascending);
+            break;
+        case VERSION_V3:
+            status = bitonic_sort_v3(data, n, ascending);
             break;
         default:
             fprintf(stderr, "Unsupported kernel version: %d\n", kernel_version);

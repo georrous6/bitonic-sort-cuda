@@ -7,7 +7,8 @@ typedef enum {
     VERSION_SERIAL = 0,
     VERSION_V0 = 1,
     VERSION_V1 = 2,
-    VERSION_V2 = 3
+    VERSION_V2 = 3,
+    VERSION_V3 = 4
 } bitonic_version_t;
 
 

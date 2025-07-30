@@ -81,7 +81,7 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-KERNELS=("none" "v0" "v1" "v2")
+KERNELS=("none" "v0" "v1" "v2" "v3")
 Q_MIN=10
 Q_MAX=27
 

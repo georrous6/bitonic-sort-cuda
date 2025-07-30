@@ -123,4 +123,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     plot_execution_time_vs_size(args.csv_path, args.plot_dir, "execution_time_vs_size.png")
-    export_speedup_table(args.csv_path, args.data_dir, 20, "speedup_table.dat")
+    export_speedup_table(args.csv_path, args.data_dir, 27, "speedup_table.dat")

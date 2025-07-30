@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "bitonic_sort_cuda.cuh"
 
-#define Q_MAX 20
+#define Q_MAX 26
 
 #define BOLD_BLUE "\033[1;34m"
 #define BOLD_GREEN "\033[1;32m"
@@ -70,6 +70,8 @@ int main(void) {
     int n_tests = 0;
 
     srand(0); // Seed for reproducibility
+
+    if (print_cuda_device_info()) return EXIT_FAILURE;
 
     for (int v = KERNEL_V0; v <= KERNEL_V2; v++) {
         

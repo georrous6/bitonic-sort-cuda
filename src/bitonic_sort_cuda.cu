@@ -14,6 +14,38 @@ int wakeup_cuda(void) {
 }
 
 
+__host__
+int print_cuda_device_info(void) {
+    int device_count;
+    cudaError_t err = cudaGetDeviceCount(&device_count);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to get device count: %s\n", cudaGetErrorString(err));
+        return EXIT_FAILURE;
+    }
+
+    printf("Found %d CUDA device(s)\n", device_count);
+
+    for (int dev = 0; dev < device_count; ++dev) {
+        cudaDeviceProp prop;
+        cudaGetDeviceProperties(&prop, dev);
+
+        printf("\nDevice %d: %s\n", dev, prop.name);
+        printf("  Compute Capability:          %d.%d\n", prop.major, prop.minor);
+        printf("  Total Global Memory:         %.2f GB\n", prop.totalGlobalMem / (1024.0 * 1024 * 1024));
+        printf("  Shared Memory per Block:     %lu KB\n", prop.sharedMemPerBlock / 1024);
+        printf("  Registers per Block:         %d\n", prop.regsPerBlock);
+        printf("  Warp Size:                   %d\n", prop.warpSize);
+        printf("  Max Threads per Block:       %d\n", prop.maxThreadsPerBlock);
+        printf("  Max Threads Dim:             [%d, %d, %d]\n", prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+        printf("  Max Grid Size:               [%d, %d, %d]\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+        printf("  Clock Rate:                  %.2f MHz\n", prop.clockRate / 1000.0);
+        printf("  Multi-Processor Count:       %d\n", prop.multiProcessorCount);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
 // // Just a serial implementation of bitonic sort for starting point
 // __host__
 // static void bitonic_sort_serial(int *data, int n, int ascending) {
@@ -90,7 +122,7 @@ static int bitonic_sort_v1(int *host_data, int n, int ascending) {
     int chunk_size   = n / numBlocks;
     int max_step  = chunk_size >> 1;  // half block size
 
-    #ifdef BUILD_DEBUG
+    #ifdef DEBUG_BUILD
         printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
         fflush(stdout);
     #endif
@@ -143,7 +175,7 @@ static int bitonic_sort_v2(int *host_data, int n, int ascending) {
     int max_step  = chunk_size >> 1;  // half block size
     size_t shared_mem_block_bytes = chunk_size * sizeof(int);
 
-    #ifdef BUILD_DEBUG
+    #ifdef DEBUG_BUILD
         printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
         fflush(stdout);
     #endif

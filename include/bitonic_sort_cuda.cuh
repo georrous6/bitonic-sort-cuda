@@ -16,4 +16,5 @@ __host__ int bitonic_sort_cuda(int *data, int n, int ascending, kernel_version_t
 __host__ int wakeup_cuda(void);
 
 
+__host__ int print_cuda_device_info(void);
 #endif

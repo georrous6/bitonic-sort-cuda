@@ -2,7 +2,7 @@
 #SBATCH --job-name=bitonic_test
 #SBATCH --partition=gpu
 #SBATCH --output=slurm.out
-#SBATCH --time=00:05:00
+#SBATCH --time=00:10:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1

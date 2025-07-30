@@ -2,7 +2,7 @@
 #SBATCH --job-name=bitonic_benchmark
 #SBATCH --partition=gpu
 #SBATCH --output=slurm.out
-#SBATCH --time=00:05:00
+#SBATCH --time=00:20:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
@@ -83,7 +83,7 @@ fi
 
 KERNELS=("none" "v0" "v1" "v2")
 Q_MIN=10
-Q_MAX=20
+Q_MAX=27
 
 for KERNEL in "${KERNELS[@]}"; do
     

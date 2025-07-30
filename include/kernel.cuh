@@ -22,18 +22,18 @@ void kernel_v0_compare_and_swap(int *data, int n, int ascending, int size, int s
 
 
 __global__
-void kernel_v1_intra_block_sort(int *data, int n, int chunk_size, int ascending);
+void kernel_v1_intra_block_sort(int *data, int n, int ascending);
 
 
 __global__
-void kernel_v1_intra_block_refine(int *data, int n, int chunk_size, int ascending, int size);
+void kernel_v1_intra_block_refine(int *data, int n, int ascending, int size);
 
 
 __global__
-void kernel_v2_intra_block_sort(int *data, int n, int chunk_size, int ascending);
+void kernel_v2_intra_block_sort(int *data, int n, int ascending);
 
 
 __global__
-void kernel_v2_intra_block_refine(int *data, int n, int chunk_size, int ascending, int size);
+void kernel_v2_intra_block_refine(int *data, int n, int ascending, int size);
 
 #endif

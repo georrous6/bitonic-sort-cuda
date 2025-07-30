@@ -118,29 +118,25 @@ static int bitonic_sort_v0(int *host_data, int n, int ascending) {
 
 __host__
 static int bitonic_sort_v1(int *host_data, int n, int ascending) {
-    int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int chunk_size   = n / numBlocks;
-    int max_step  = chunk_size >> 1;  // half block size
 
-    #ifdef DEBUG_BUILD
-        printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
-        fflush(stdout);
-    #endif
+    int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int max_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
+    int max_step = max_size >> 1;  // half block size
 
     int *device_data = NULL;
     if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS)
         return EXIT_FAILURE;
 
     // Intra block sorting
-    kernel_v1_intra_block_sort<<<numBlocks, BLOCK_SIZE>>>(device_data, n, chunk_size, ascending);
+    kernel_v1_intra_block_sort<<<numBlocks, BLOCK_SIZE>>>(device_data, n, ascending);
     if (post_launch_barrier_and_check()) {
         cudaFree(device_data);
         return EXIT_FAILURE;
     }
 
     // merge across blocks
-    for (int size = chunk_size << 1; size <= n; size <<= 1) {
-        
+    for (int size = max_size << 1; size <= n; size <<= 1) {
+
         for (int step = size >> 1; step > max_step; step >>= 1) {
 
             // Inter block merge
@@ -151,7 +147,7 @@ static int bitonic_sort_v1(int *host_data, int n, int ascending) {
             }
         }
         // intra-block refinement
-        kernel_v1_intra_block_refine<<<numBlocks, BLOCK_SIZE>>>(device_data, n, chunk_size, ascending, size);
+        kernel_v1_intra_block_refine<<<numBlocks, BLOCK_SIZE>>>(device_data, n, ascending, size);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;
@@ -171,28 +167,23 @@ static int bitonic_sort_v1(int *host_data, int n, int ascending) {
 __host__
 static int bitonic_sort_v2(int *host_data, int n, int ascending) {
     int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int chunk_size   = n / numBlocks;
-    int max_step  = chunk_size >> 1;  // half block size
-    size_t shared_mem_block_bytes = chunk_size * sizeof(int);
-
-    #ifdef DEBUG_BUILD
-        printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
-        fflush(stdout);
-    #endif
+    int max_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
+    int max_step  = max_size >> 1;  // half block size
+    size_t shared_mem_block_bytes = max_size * sizeof(int);
 
     int *device_data = NULL;
     if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS)
         return EXIT_FAILURE;
 
     // Intra block sorting
-    kernel_v2_intra_block_sort<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, chunk_size, ascending);
+    kernel_v2_intra_block_sort<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, ascending);
     if (post_launch_barrier_and_check()) {
         cudaFree(device_data);
         return EXIT_FAILURE;
     }
 
     // merge across blocks
-    for (int size = chunk_size << 1; size <= n; size <<= 1) {
+    for (int size = max_size << 1; size <= n; size <<= 1) {
         
         for (int step = size >> 1; step > max_step; step >>= 1) {
 
@@ -204,7 +195,7 @@ static int bitonic_sort_v2(int *host_data, int n, int ascending) {
             }
         }
         // intra-block refinement
-        kernel_v2_intra_block_refine<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, chunk_size, ascending, size);
+        kernel_v2_intra_block_refine<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, ascending, size);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

@@ -5,7 +5,7 @@
       "name": "Run Tests",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/tests",
+      "program": "${workspaceFolder}/build/debug/tests",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
@@ -19,7 +19,7 @@
           "ignoreFailures": true
         }
       ],
-      "preLaunchTask": "Build with Make",
+      "preLaunchTask": "Build Debug",
       "miDebuggerPath": "/usr/bin/gdb"
     }
   ]

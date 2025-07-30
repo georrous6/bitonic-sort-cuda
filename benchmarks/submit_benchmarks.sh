@@ -70,10 +70,10 @@ nvcc --version
 # --- Build the project ---
 echo -e "\n=== Building the project ==="
 make clean
-make
+make BUILD_TYPE=release -j$(nproc)
 
 # --- Define executable path ---
-EXECUTABLE="$PROJECT_DIR/build/benchmarks"
+EXECUTABLE="$PROJECT_DIR/build/release/benchmarks"
 
 # --- Check if executable exists ---
 if [ ! -x "$EXECUTABLE" ]; then
@@ -81,7 +81,7 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-KERNELS=("none" "v0" "v1")
+KERNELS=("none" "v0" "v1" "v2")
 Q_MIN=10
 Q_MAX=20
 

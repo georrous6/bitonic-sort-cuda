@@ -52,10 +52,10 @@ nvcc --version
 # --- Build the project ---
 echo -e "\n=== Building the project ==="
 make clean
-make
+make BUILD_TYPE=debug -j$(nproc)
 
 # --- Define executable path ---
-EXECUTABLE="$PROJECT_DIR/build/tests"
+EXECUTABLE="$PROJECT_DIR/build/debug/tests"
 
 # --- Check if executable exists ---
 if [ ! -x "$EXECUTABLE" ]; then

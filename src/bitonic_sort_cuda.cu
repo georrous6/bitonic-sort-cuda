@@ -90,8 +90,10 @@ static int bitonic_sort_v1(int *host_data, int n, int ascending) {
     int chunk_size   = n / numBlocks;
     int max_step  = chunk_size >> 1;  // half block size
 
-    printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
-    fflush(stdout);
+    #ifdef BUILD_DEBUG
+        printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
+        fflush(stdout);
+    #endif
 
     int *device_data = NULL;
     if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS)
@@ -141,8 +143,10 @@ static int bitonic_sort_v2(int *host_data, int n, int ascending) {
     int max_step  = chunk_size >> 1;  // half block size
     size_t shared_mem_block_bytes = chunk_size * sizeof(int);
 
-    printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
-    fflush(stdout);
+    #ifdef BUILD_DEBUG
+        printf("size: %d, number of blocks: %d, chunk size: %d, threads per block: %d\n", n, numBlocks, chunk_size, BLOCK_SIZE);
+        fflush(stdout);
+    #endif
 
     int *device_data = NULL;
     if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS)

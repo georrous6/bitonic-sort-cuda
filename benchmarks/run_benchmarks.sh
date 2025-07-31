@@ -29,6 +29,7 @@ cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 RESULTS_DIR="benchmarks/results"
 TIMING_FILE="$RESULTS_DIR/execution_times_$SLURM_JOB_PARTITION.log"
 mkdir -p "$RESULTS_DIR"
+rm -f "$TIMING_FILE"
 
 # --- Load required modules ---
 module purge

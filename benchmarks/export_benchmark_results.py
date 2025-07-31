@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
     os.makedirs(args.export_dir, exist_ok=True)
 
-    plot_filename = os.path.join(args.export_dir, f"execution_times_{args.partition}.png")
+    plot_filename = os.path.join(args.export_dir, f"execution_times_comparison_{args.partition}.png")
     plot_execution_time_vs_size(args.input_path, plot_filename, args.partition)
 
     q_value = 27

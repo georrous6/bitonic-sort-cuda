@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=bitonic_benchmark
 #SBATCH --partition=gpu
-#SBATCH --output=slurm.out
+#SBATCH --output=slurm-%j.out
 #SBATCH --time=00:20:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -19,8 +19,8 @@ if [ -z "$PROJECT_DIR" ]; then
 fi
 
 # --- Print job information ---
+echo -e "\n*** Running benchmarks on partition: $SLURM_JOB_PARTITION ***"
 echo "Date: $(date)"
-echo "Running on partition: $SLURM_JOB_PARTITION"
 
 # --- Move to the project directory ---
 cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
@@ -90,7 +90,7 @@ for VERSION in "${VERSIONS[@]}"; do
     # Define sizes to test
     for q in $(seq $Q_MIN $Q_MAX); do
 
-        echo "--- Running benchmark for version $VERSION with q=$q ---"
+	echo "--- Running benchmark for version $VERSION with q=$q (partition: $SLURM_JOB_PARTITION) ---"
 
         "$EXECUTABLE" "$q" --version "$VERSION" --timing-file "$TIMING_FILE"
         if [ $? -ne 0 ]; then

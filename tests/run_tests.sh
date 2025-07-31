@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=bitonic_test
 #SBATCH --partition=gpu
-#SBATCH --output=slurm.out
+#SBATCH --output=slurm-%j.out
 #SBATCH --time=00:10:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

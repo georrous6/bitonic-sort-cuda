@@ -2,5 +2,6 @@
 
 PROJECT_ROOT="$PWD"/../
 
+rm *.out
 sbatch --partition=gpu run_benchmarks.sh "$PROJECT_ROOT"
 sbatch --partition=ampere run_benchmarks.sh "$PROJECT_ROOT"

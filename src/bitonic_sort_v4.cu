@@ -1,11 +1,30 @@
-#include "bitonic_sort_v3.cuh"
+#include "bitonic_sort_v4.cuh"
 #include "util.cuh"
 #include "config.cuh"
-#include "bitonic_sort_v2.cuh"
+#include "bitonic_sort_v3.cuh"
+
+
+__device__ __forceinline__
+static void compare_and_swap_volatile(volatile int *arr, 
+                                      int local_tid, 
+                                      int offset, 
+                                      int size, 
+                                      int step, 
+                                      int log2step) {
+    int i = get_lower_partner(local_tid, step, log2step);
+    int j = i + step;
+    int global_id = offset + i;
+    int is_asc = ((global_id & size) == 0);
+    if ((arr[i] > arr[j]) == is_asc) {
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+}
 
 
 __global__
-static void kernel_compare_and_swap_v3(int *data, int size, int step, int log2step)
+static void kernel_compare_and_swap_v4(int *data, int size, int step, int log2step)
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int i = get_lower_partner(tid, step, log2step);
@@ -16,15 +35,30 @@ static void kernel_compare_and_swap_v3(int *data, int size, int step, int log2st
 }
 
 
+__device__
+static void unroll_step_loop(volatile int *s_data, int local_tid, int size, int offset) {
+    compare_and_swap_volatile(s_data, local_tid, offset, size, 32, 5);
+    __syncthreads();
+    compare_and_swap_volatile(s_data, local_tid, offset, size, 16, 4);
+    __syncthreads();
+    compare_and_swap_volatile(s_data, local_tid, offset, size, 8, 3);
+    __syncthreads();
+    compare_and_swap_volatile(s_data, local_tid, offset, size, 4, 2);
+    __syncthreads();
+    compare_and_swap_volatile(s_data, local_tid, offset, size, 2, 1);
+    __syncthreads();
+    compare_and_swap_volatile(s_data, local_tid, offset, size, 1, 0);
+    __syncthreads();
+}
+
 
 __global__ 
-static void kernel_intra_block_sort_v3(int *data, int max_size) {
+static void kernel_intra_block_sort_v4(int *data, int max_size) {
     
     extern __shared__ int s_data[];
     int offset = 2 * blockIdx.x * blockDim.x;
     int local_tid = threadIdx.x;
     int local_tid_2 = 2 * local_tid;
-    //int max_size = 2 * blockDim.x;
 
     // Load data into shared memory
     s_data[local_tid_2] = data[offset + local_tid_2];
@@ -33,7 +67,7 @@ static void kernel_intra_block_sort_v3(int *data, int max_size) {
     __syncthreads();
 
     for (int size = 2; size <= max_size; size <<= 1) {
-        for (int step = size >> 1; step > 0; step >>= 1) {
+        for (int step = size >> 1; step > WARP_SIZE; step >>= 1) {
             int log2step = __ffs(step) - 1;
             int i = get_lower_partner(local_tid, step, log2step);
             int j = i + step;
@@ -42,6 +76,8 @@ static void kernel_intra_block_sort_v3(int *data, int max_size) {
             compare_and_swap(s_data, i, j, is_asc);
             __syncthreads();
         }
+
+        unroll_step_loop(s_data, local_tid, size, offset);
     }
 
     // Copy data back to global memory
@@ -51,13 +87,12 @@ static void kernel_intra_block_sort_v3(int *data, int max_size) {
 
 
 __global__
-static void kernel_intra_block_refine_v3(int *data, int size, int max_size) {
+static void kernel_intra_block_refine_v4(int *data, int size, int max_size) {
 
     extern __shared__ int s_data[];
     int offset = 2 * blockIdx.x * blockDim.x;
     int local_tid = threadIdx.x;
     int local_tid_2 = 2 * local_tid;
-    //int max_size = 2 * blockDim.x;
 
     // Load data into shared memory
     s_data[local_tid_2] = data[offset + local_tid_2];
@@ -65,7 +100,7 @@ static void kernel_intra_block_refine_v3(int *data, int size, int max_size) {
 
     __syncthreads();
 
-    for (int step = max_size >> 1; step > 0; step >>= 1) {
+    for (int step = max_size >> 1; step > WARP_SIZE; step >>= 1) {
         int log2step = __ffs(step) - 1;
         int i = get_lower_partner(local_tid, step, log2step);
         int j  = i + step;
@@ -75,6 +110,8 @@ static void kernel_intra_block_refine_v3(int *data, int size, int max_size) {
         __syncthreads();
     }
 
+    unroll_step_loop(s_data, local_tid, size, offset);
+
     // Copy data back to global memory
     data[offset + local_tid_2] = s_data[local_tid_2];
     data[offset + local_tid_2 + 1] = s_data[local_tid_2 + 1];
@@ -82,7 +119,7 @@ static void kernel_intra_block_refine_v3(int *data, int size, int max_size) {
 
 
 __host__
-int bitonic_sort_v3(int *host_data, int n, int descending) {
+int bitonic_sort_v4(int *host_data, int n, int descending) {
     int n_half = n >> 1;
     int threadsPerBlock = BLOCK_SIZE > n_half ? n_half : BLOCK_SIZE;
     int numBlocks = (n_half + threadsPerBlock - 1) / threadsPerBlock;
@@ -95,7 +132,7 @@ int bitonic_sort_v3(int *host_data, int n, int descending) {
         return EXIT_FAILURE;
 
     // Intra block sorting
-    kernel_intra_block_sort_v3<<<numBlocks, threadsPerBlock, shared_mem_block_bytes>>>(device_data, max_size);
+    kernel_intra_block_sort_v4<<<numBlocks, threadsPerBlock, shared_mem_block_bytes>>>(device_data, max_size);
     if (post_launch_barrier_and_check()) {
         cudaFree(device_data);
         return EXIT_FAILURE;
@@ -108,14 +145,14 @@ int bitonic_sort_v3(int *host_data, int n, int descending) {
 
             // Inter block merge
             int log2step = __builtin_ctz(step);
-            kernel_compare_and_swap_v3<<<numBlocks, threadsPerBlock>>>(device_data, size, step, log2step);
+            kernel_compare_and_swap_v4<<<numBlocks, threadsPerBlock>>>(device_data, size, step, log2step);
             if (post_launch_barrier_and_check()) {
                 cudaFree(device_data);
                 return EXIT_FAILURE;
             }
         }
         // intra-block refinement
-        kernel_intra_block_refine_v3<<<numBlocks, threadsPerBlock, shared_mem_block_bytes>>>(device_data, size, max_size);
+        kernel_intra_block_refine_v4<<<numBlocks, threadsPerBlock, shared_mem_block_bytes>>>(device_data, size, max_size);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

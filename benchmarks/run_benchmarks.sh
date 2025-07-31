@@ -82,7 +82,7 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-VERSIONS=("serial" "v0" "v1" "v2" "v3")
+VERSIONS=("serial" "v0" "v1" "v2" "v3" "v4")
 Q_MIN=10
 Q_MAX=27
 

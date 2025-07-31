@@ -74,7 +74,7 @@ int main(void) {
 
     if (print_cuda_device_info()) return EXIT_FAILURE;
 
-    for (int v = VERSION_V0; v <= VERSION_V3; v++) {
+    for (int v = VERSION_V0; v <= VERSION_V4; v++) {
         
         for (int q = Q_MIN; q <= Q_MAX; q++) {
             int descending = q % 2;

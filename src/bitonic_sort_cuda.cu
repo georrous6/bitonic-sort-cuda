@@ -1,5 +1,6 @@
 #include "bitonic_sort_cuda.cuh"
 #include "util.cuh"
+#include "config.cuh"
 #include "bitonic_sort_v0.cuh"
 #include "bitonic_sort_v1.cuh"
 #include "bitonic_sort_v2.cuh"
@@ -15,6 +16,29 @@ static void kernel_wakeup(void) {}
 __host__
 int wakeup_cuda(void) {
     kernel_wakeup<<<1, 1>>>();
+    return post_launch_barrier_and_check();
+}
+
+
+__global__
+static void reverse_kernel(int *data, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= (n >> 1)) return;
+
+    int temp = data[idx];
+    int opposite_idx = n - idx - 1;
+    data[idx] = data[opposite_idx];
+    data[opposite_idx] = temp;
+}
+
+
+__host__
+static int reverse_data(int *data, int n) {
+    int n_half = n >> 1;
+    int threadsPerBlock = BLOCK_SIZE > n_half ? n_half : BLOCK_SIZE;
+    int numBlocks = (n_half + threadsPerBlock - 1) / threadsPerBlock;
+
+    reverse_kernel<<<numBlocks, threadsPerBlock>>>(data, n);
     return post_launch_barrier_and_check();
 }
 
@@ -78,20 +102,20 @@ static int compare_desc(const void *a, const void *b) {
 }
 
 
-static void sort_serial(int *data, int n, int ascending) {
-    if (ascending) {
-        qsort(data, n, sizeof(int), compare_asc);
-    } else {
+static void sort_serial(int *data, int n, int descending) {
+    if (descending) {
         qsort(data, n, sizeof(int), compare_desc);
+    } else {
+        qsort(data, n, sizeof(int), compare_asc);
     }
 }
 
 
 __host__
-int bitonic_sort_cuda(int *data, int n, int ascending, bitonic_version_t kernel_version) {
+int bitonic_sort_cuda(int *data, int n, int descending, bitonic_version_t kernel_version) {
 
-    if ((n & (n - 1)) != 0) {
-        fprintf(stderr, "Error: Input size n=%d is not a power of 2.\n", n);
+    if ((n & (n - 1)) != 0 || n < 2) {
+        fprintf(stderr, "Error: Input size n=%d is not a power of 2 or less than 2.\n", n);
         return EXIT_FAILURE;
     }
 
@@ -100,29 +124,29 @@ int bitonic_sort_cuda(int *data, int n, int ascending, bitonic_version_t kernel_
     // Kernel launch
     switch (kernel_version) {
         case VERSION_SERIAL:
-            sort_serial(data, n, ascending);
+            sort_serial(data, n, descending);
             break;
         case VERSION_V0:
-            status = bitonic_sort_v0(data, n, ascending);
+            status = bitonic_sort_v0(data, n);
             break;
         case VERSION_V1:
-            status = bitonic_sort_v1(data, n, ascending);
+            status = bitonic_sort_v1(data, n);
             break;
         case VERSION_V2:
-            status = bitonic_sort_v2(data, n, ascending);
+            status = bitonic_sort_v2(data, n);
             break;
         case VERSION_V3:
-            status = bitonic_sort_v3(data, n, ascending);
+            status = bitonic_sort_v3(data, n);
             break;
         default:
             fprintf(stderr, "Unsupported kernel version: %d\n", kernel_version);
             status = EXIT_FAILURE;
     }
 
-    if (status) {
-        fprintf(stderr, "Fallback to serial bitonic sort.\n");
-        sort_serial(data, n, ascending);
-        return EXIT_FAILURE;
+    if (status) return EXIT_FAILURE;
+
+    if (descending) {
+        return reverse_data(data, n);
     }
 
     return EXIT_SUCCESS;

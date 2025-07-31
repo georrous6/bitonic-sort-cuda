@@ -20,7 +20,7 @@ static void kernel_compare_and_swap_v3(int *data, int size, int step, int log2st
     int i = get_lower_partner(tid, step, log2step);
     int j = i + step;
 
-    int is_asc = ((i & size) == 0);
+    int is_asc = (i & size) == 0;
     compare_and_swap(data, i, j, is_asc);
 }
 
@@ -91,7 +91,7 @@ static void kernel_intra_block_refine_v3(int *data, int size, int max_size) {
 
 
 __host__
-int bitonic_sort_v3(int *host_data, int n, int ascending) {
+int bitonic_sort_v3(int *host_data, int n) {
     int n_half = n >> 1;
     int threadsPerBlock = BLOCK_SIZE > n_half ? n_half : BLOCK_SIZE;
     int numBlocks = (n_half + threadsPerBlock - 1) / threadsPerBlock;

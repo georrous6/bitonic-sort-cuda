@@ -5,7 +5,7 @@
 
 
 __global__ 
-static void kernel_intra_block_sort_v2(int *data, int n, int ascending) {
+static void kernel_intra_block_sort_v2(int *data, int n) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -25,7 +25,7 @@ static void kernel_intra_block_sort_v2(int *data, int n, int ascending) {
             int j = tid ^ step;
             if (j > tid) {
                 int global_id = offset + tid;
-                int is_asc = ((global_id & size) == 0) ? ascending : !ascending;
+                int is_asc = (global_id & size) == 0;
                 compare_and_swap(s_data, tid, j, is_asc);
             }
             __syncthreads();
@@ -38,7 +38,7 @@ static void kernel_intra_block_sort_v2(int *data, int n, int ascending) {
 
 
 __global__
-static void kernel_intra_block_refine_v2(int *data, int n, int ascending, int size) {
+static void kernel_intra_block_refine_v2(int *data, int n, int size) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -57,7 +57,7 @@ static void kernel_intra_block_refine_v2(int *data, int n, int ascending, int si
         int j  = tid ^ step;
         if (j > tid) {
             int global_id = offset + tid;
-            int is_asc = ((global_id & size) == 0) ? ascending : !ascending;
+            int is_asc = (global_id & size) == 0;
             compare_and_swap(s_data, tid, j, is_asc);
         }
         __syncthreads();
@@ -69,7 +69,7 @@ static void kernel_intra_block_refine_v2(int *data, int n, int ascending, int si
 
 
 __host__
-int bitonic_sort_v2(int *host_data, int n, int ascending) {
+int bitonic_sort_v2(int *host_data, int n) {
     int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int max_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
     int max_step  = max_size >> 1;  // half block size
@@ -80,7 +80,7 @@ int bitonic_sort_v2(int *host_data, int n, int ascending) {
         return EXIT_FAILURE;
 
     // Intra block sorting
-    kernel_intra_block_sort_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, ascending);
+    kernel_intra_block_sort_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n);
     if (post_launch_barrier_and_check()) {
         cudaFree(device_data);
         return EXIT_FAILURE;
@@ -92,14 +92,14 @@ int bitonic_sort_v2(int *host_data, int n, int ascending) {
         for (int step = size >> 1; step > max_step; step >>= 1) {
 
             // Inter block merge
-            kernel_compare_and_swap_v0<<<numBlocks, BLOCK_SIZE>>>(device_data, n, ascending, size, step);
+            kernel_compare_and_swap_v0<<<numBlocks, BLOCK_SIZE>>>(device_data, n, size, step);
             if (post_launch_barrier_and_check()) {
                 cudaFree(device_data);
                 return EXIT_FAILURE;
             }
         }
         // intra-block refinement
-        kernel_intra_block_refine_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, ascending, size);
+        kernel_intra_block_refine_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, size);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

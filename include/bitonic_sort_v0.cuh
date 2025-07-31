@@ -3,10 +3,10 @@
 #include <cuda_runtime.h>
 
 __host__
-int bitonic_sort_v0(int *host_data, int n, int ascending);
+int bitonic_sort_v0(int *host_data, int n);
 
 
 __global__ 
-void kernel_compare_and_swap_v0(int *data, int n, int ascending, int size, int step);
+void kernel_compare_and_swap_v0(int *data, int n, int size, int step);
 
 #endif

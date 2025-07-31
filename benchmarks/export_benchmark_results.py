@@ -5,51 +5,52 @@ import pandas as pd
 from itertools import cycle
 
 
-def plot_execution_time_vs_size(csv_path, output_dir, output_filename):
+# Sort versions by assumed version order
+def version_sort_key(v):
+    if v == "serial":
+        return -1
+    if v.startswith("v") and v[1:].isdigit():
+        return int(v[1:])
+    return float('inf')
+
+
+def plot_execution_time_vs_size(input_path, output_path, partition):
     # Load CSV data
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(input_path)
 
     # Validate expected columns
-    if not {'q', 'kernel', 'time_ms'}.issubset(df.columns):
-        raise ValueError("CSV must have columns: q, kernel, time_ms")
+    if not {'q', 'version', 'time_ms'}.issubset(df.columns):
+        raise ValueError("CSV must have columns: q, version, time_ms")
 
     # Check for valid time values
     if (df["time_ms"] <= 0).any():
         raise ValueError("time_ms must be strictly positive for log-scale plotting.")
 
     # Sort and group
-    df.sort_values(by=["kernel", "q"], inplace=True)
+    df.sort_values(by=["version", "q"], inplace=True)
 
-    # Determine unique kernel versions and sort them meaningfully
-    def kernel_sort_key(k):
-        if k == "none":
-            return -1
-        if k.startswith("v") and k[1:].isdigit():
-            return int(k[1:])
-        return float('inf')
+    versions = sorted(df["version"].unique(), key=version_sort_key)
 
-    kernel_versions = sorted(df["kernel"].unique(), key=kernel_sort_key)
-
-    # Marker styles (repeats if more than 10 kernels)
+    # Marker styles (repeats if more than 10 versions)
     marker_styles = cycle(['o', 's', '^', 'v', 'D', '*', 'P', 'X', '<', '>'])
 
     # Plot
     plt.figure(figsize=(10, 6))
-    for kernel in kernel_versions:
-        sub_df = df[df["kernel"] == kernel]
+    for version in versions:
+        sub_df = df[df["version"] == version]
         if not sub_df.empty:
             marker = next(marker_styles)
             plt.plot(
                 sub_df["q"],
                 sub_df["time_ms"],
                 marker=marker,
-                label=kernel.upper()
+                label=version.upper()
             )
 
     plt.xlabel("Array Size (N = 2^q)")
     plt.ylabel("Total Execution Time (ms)")
-    plt.title("Total Execution Time vs Array Size")
-    plt.legend()
+    plt.title(f"Total Execution Time vs Array Size (Partition: {partition.upper()})")
+    plt.legend(loc='upper left')
     plt.grid(True)
 
     q_values = sorted(df["q"].unique())
@@ -57,39 +58,29 @@ def plot_execution_time_vs_size(csv_path, output_dir, output_filename):
     plt.yscale("log", base=10)
     plt.tight_layout()
 
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, output_filename)
     plt.savefig(output_path)
     print(f"Saved plot to {output_path}")
     plt.close()
 
 
-def export_speedup_table(csv_path, data_dir, q_value, output_filename):
+def export_speedup_table(input_path, output_path, q_value):
     # Load CSV data
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(input_path)
 
     # Validate expected columns
-    if not {'q', 'kernel', 'time_ms'}.issubset(df.columns):
-        raise ValueError("CSV must have columns: q, kernel, time_ms")
+    if not {'q', 'version', 'time_ms'}.issubset(df.columns):
+        raise ValueError("CSV must have columns: q, version, time_ms")
 
     # Filter by q
     q_df = df[df["q"] == q_value].copy()
     if q_df.empty:
         raise ValueError(f"No data found for q = {q_value}")
 
-    # Sort kernels by assumed version order
-    def kernel_sort_key(k):
-        if k == "none":
-            return -1
-        if k.startswith("v") and k[1:].isdigit():
-            return int(k[1:])
-        return float('inf')
-
-    q_df.sort_values(by="kernel", key=lambda col: col.map(kernel_sort_key), inplace=True)
+    q_df.sort_values(by="version", key=lambda col: col.map(version_sort_key), inplace=True)
 
     # Compute speedups
     times = q_df["time_ms"].values
-    kernels = q_df["kernel"].tolist()
+    versions = q_df["version"].tolist()
 
     step_speedups = [""]
     cumulative_speedups = [1.0]
@@ -102,25 +93,29 @@ def export_speedup_table(csv_path, data_dir, q_value, output_filename):
 
     # Prepare output table
     result_df = pd.DataFrame({
-        "Kernel Version": [k.upper() for k in kernels],
+        "Version": [v.upper() for v in versions],
         "Time (ms)": [f"{t:.3f}" for t in times],
         "Step Speedup": step_speedups,
         "Cumulative Speedup": [f"{s:.2f}" if isinstance(s, float) else s for s in cumulative_speedups]
     })
 
     # Export
-    os.makedirs(data_dir, exist_ok=True)
-    output_path = os.path.join(data_dir, output_filename)
     result_df.to_csv(output_path, index=False)
     print(f"Saved speedup table to {output_path}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("csv_path", help="Full path to input CSV file")
-    parser.add_argument("plot_dir", help="Directory to save plot (.png)")
-    parser.add_argument("data_dir", help="Directory to save data files (.dat)")
+    parser.add_argument("input_path", help="Full path to input CSV file")
+    parser.add_argument("export_dir", help="Directory to export plots and tables")
+    parser.add_argument("partition", help="SLURM job partition name (e.g., gpu, ampere)")
     args = parser.parse_args()
 
-    plot_execution_time_vs_size(args.csv_path, args.plot_dir, "execution_time_vs_size.png")
-    export_speedup_table(args.csv_path, args.data_dir, 27, "speedup_table.dat")
+    os.makedirs(args.export_dir, exist_ok=True)
+
+    plot_filename = os.path.join(args.export_dir, f"execution_times_{args.partition}.png")
+    plot_execution_time_vs_size(args.input_path, plot_filename, args.partition)
+
+    q_value = 27
+    table_filename = os.path.join(args.export_dir, f"speedup_table_{args.partition}_{q_value}.dat")
+    export_speedup_table(args.input_path, table_filename, q_value)

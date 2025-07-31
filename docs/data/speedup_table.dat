@@ -1,6 +1,0 @@
-Kernel Version,Time (ms),Step Speedup,Cumulative Speedup
-NONE,25781.656,,1.00
-V0,998.435,25.82,25.82
-V1,884.248,1.13,29.16
-V2,701.150,1.26,36.77
-V3,578.905,1.21,44.54

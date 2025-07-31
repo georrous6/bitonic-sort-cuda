@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include "bitonic_sort_cuda.cuh"
 
-#define Q_MAX 25
+#define Q_MIN 1
+#define Q_MAX 23
 
 #define BOLD_BLUE "\033[1;34m"
 #define BOLD_GREEN "\033[1;32m"
@@ -20,9 +21,9 @@ int cmp_desc(const void *a, const void *b) {
 }
 
 
-int test_case(int q, int ascending, bitonic_version_t version) {
+int test_case(int q, int descending, bitonic_version_t version) {
 
-    printf(BOLD_BLUE "Running test case with q = %d, ascending = %d, kernel version = %d ...\n" RESET, q, ascending, version - 1);
+    printf(BOLD_BLUE "Running test case with q = %d, descending = %d, kernel version = %d ...\n" RESET, q, descending, version - 1);
     fflush(stdout);
 
     int n = 1 << q;
@@ -39,8 +40,8 @@ int test_case(int q, int ascending, bitonic_version_t version) {
         sorted_data[i] = data[i];
     }
 
-    qsort(sorted_data, n, sizeof(int), ascending ? cmp_asc : cmp_desc);
-    if (bitonic_sort_cuda(data, n, ascending, version)) {
+    qsort(sorted_data, n, sizeof(int), descending ? cmp_desc : cmp_asc);
+    if (bitonic_sort_cuda(data, n, descending, version)) {
         free(data);
         free(sorted_data);
         return EXIT_FAILURE;
@@ -75,12 +76,12 @@ int main(void) {
 
     for (int v = VERSION_V0; v <= VERSION_V3; v++) {
         
-        for (int q = 1; q <= Q_MAX; q++) {
-            int ascending = q % 2;
+        for (int q = Q_MIN; q <= Q_MAX; q++) {
+            int descending = q % 2;
             n_tests++;
 
-            if (test_case(q, ascending, (bitonic_version_t)v) != EXIT_SUCCESS) {
-                printf(BOLD_RED "Failed\n" RESET); 
+            if (test_case(q, descending, (bitonic_version_t)v) != EXIT_SUCCESS) {
+                printf(BOLD_RED "Failed\n" RESET);
                 fflush(stdout);
             }
             else {

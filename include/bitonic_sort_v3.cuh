@@ -5,6 +5,6 @@
 
 
 __host__
-int bitonic_sort_v3(int *host_data, int n, int ascending);
+int bitonic_sort_v3(int *host_data, int n);
 
 #endif

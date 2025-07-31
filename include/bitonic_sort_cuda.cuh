@@ -12,7 +12,7 @@ typedef enum {
 } bitonic_version_t;
 
 
-__host__ int bitonic_sort_cuda(int *data, int n, int ascending, bitonic_version_t version);
+__host__ int bitonic_sort_cuda(int *data, int n, int descending, bitonic_version_t version);
 
 
 __host__ int wakeup_cuda(void);

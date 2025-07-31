@@ -10,6 +10,7 @@ int host_to_device_data(int *host_data, int n, int **device_data) {
     err = cudaMalloc((void **)device_data, n * sizeof(int));
     if (err != cudaSuccess) {
         fprintf(stderr, "Error allocating device memory: %s\n", cudaGetErrorString(err));
+        fflush(stderr);
         return EXIT_FAILURE;
     }
 
@@ -17,6 +18,7 @@ int host_to_device_data(int *host_data, int n, int **device_data) {
     err = cudaMemcpy(*device_data, host_data, n * sizeof(int), cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
         fprintf(stderr, "Error copying data to device: %s\n", cudaGetErrorString(err));
+        fflush(stderr);
         cudaFree(*device_data);
         return EXIT_FAILURE;
     }
@@ -33,6 +35,7 @@ int device_to_host_data(int *host_data, int n, int *device_data) {
     err = cudaMemcpy(host_data, device_data, n * sizeof(int), cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
         fprintf(stderr, "Error copying data back to host: %s\n", cudaGetErrorString(err));
+        fflush(stderr);
         return EXIT_FAILURE;
     }
 
@@ -46,12 +49,14 @@ int post_launch_barrier_and_check(void) {
     err = cudaGetLastError();
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA error: %s\n", cudaGetErrorString(err));
+        fflush(stderr);
         return EXIT_FAILURE;
     }
 
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA synchronization error: %s\n", cudaGetErrorString(err));
+        fflush(stderr);
         return EXIT_FAILURE;
     }
 

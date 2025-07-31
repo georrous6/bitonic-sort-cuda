@@ -4,6 +4,15 @@
 #include "bitonic_sort_v2.cuh"
 
 
+__device__ __forceinline__
+static int get_lower_partner(int tid, int step, int log2step) {
+    int blockPair = tid >> log2step;
+    int offset    = tid & (step - 1);
+    int base = blockPair << (log2step + 1);
+    return base + offset;
+}
+
+
 __global__
 static void kernel_compare_and_swap_v3(int *data,
                                 int ascending,
@@ -12,24 +21,86 @@ static void kernel_compare_and_swap_v3(int *data,
                                 int log2step)
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    int blockPair = tid >> log2step;
-    int offset    = tid & (step - 1);
-    int base = blockPair << (log2step + 1);
-    int i    = base + offset;
-    int j    = i ^ step;  // guaranteed j>i
+    int i = get_lower_partner(tid, step, log2step);
+    int j = i + step;
 
     int is_asc = ((i & size) == 0) ? ascending : !ascending;
     compare_and_swap(data, i, j, is_asc);
 }
 
 
+
+__global__ 
+static void kernel_intra_block_sort_v3(int *data, int ascending) {
+    
+    extern __shared__ int s_data[];
+    int offset = 2 * blockIdx.x * blockDim.x;
+    int local_tid = threadIdx.x;
+    int local_tid_2 = 2 * local_tid;
+    int max_size = 2 * blockDim.x;
+
+    // Load data into shared memory
+    s_data[local_tid_2] = data[offset + local_tid_2];
+    s_data[local_tid_2 + 1] = data[offset + local_tid_2 + 1];
+
+    __syncthreads();
+
+    for (int size = 2; size <= max_size; size <<= 1) {
+        for (int step = size >> 1; step > 0; step >>= 1) {
+            int log2step = __ffs(step) - 1;
+            int i = get_lower_partner(local_tid, step, log2step);
+            int j = i + step;
+            int global_id = offset + i;
+            int is_asc = ((global_id & size) == 0) ? ascending : !ascending;
+            compare_and_swap(s_data, i, j, is_asc);
+            __syncthreads();
+        }
+    }
+
+    // Copy data back to global memory
+    data[offset + local_tid_2] = s_data[local_tid_2];
+    data[offset + local_tid_2 + 1] = s_data[local_tid_2 + 1];
+}
+
+
+__global__
+static void kernel_intra_block_refine_v3(int *data, int ascending, int size) {
+
+    extern __shared__ int s_data[];
+    int offset = 2 * blockIdx.x * blockDim.x;
+    int local_tid = threadIdx.x;
+    int local_tid_2 = 2 * local_tid;
+    int max_size = 2 * blockDim.x;
+
+    // Load data into shared memory
+    s_data[local_tid_2] = data[offset + local_tid_2];
+    s_data[local_tid_2 + 1] = data[offset + local_tid_2 + 1];
+
+    __syncthreads();
+
+    for (int step = max_size >> 1; step > 0; step >>= 1) {
+        int log2step = __ffs(step) - 1;
+        int i = get_lower_partner(local_tid, step, log2step);
+        int j  = i + step;
+        int global_id = offset + i;
+        int is_asc = ((global_id & size) == 0) ? ascending : !ascending;
+        compare_and_swap(s_data, i, j, is_asc);
+        __syncthreads();
+    }
+
+    // Copy data back to global memory
+    data[offset + local_tid_2] = s_data[local_tid_2];
+    data[offset + local_tid_2 + 1] = s_data[local_tid_2 + 1];
+}
+
+
 __host__
 int bitonic_sort_v3(int *host_data, int n, int ascending) {
-    int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int numBlocksHalf = ((n >> 1) + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int max_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
-    int max_step  = max_size >> 1;  // half block size
+    int n_half = n >> 1;
+    int threadsPerBlock = BLOCK_SIZE > n_half ? n_half : BLOCK_SIZE;
+    int numBlocks = (n_half + threadsPerBlock - 1) / threadsPerBlock;
+    int max_size = 2 * threadsPerBlock;
+    int max_step  = max_size >> 1;
     size_t shared_mem_block_bytes = max_size * sizeof(int);
 
     int *device_data = NULL;
@@ -37,7 +108,7 @@ int bitonic_sort_v3(int *host_data, int n, int ascending) {
         return EXIT_FAILURE;
 
     // Intra block sorting
-    kernel_intra_block_sort_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, ascending);
+    kernel_intra_block_sort_v3<<<numBlocks, threadsPerBlock, shared_mem_block_bytes>>>(device_data, ascending);
     if (post_launch_barrier_and_check()) {
         cudaFree(device_data);
         return EXIT_FAILURE;
@@ -50,14 +121,14 @@ int bitonic_sort_v3(int *host_data, int n, int ascending) {
 
             // Inter block merge
             int log2step = __builtin_ctz(step);
-            kernel_compare_and_swap_v3<<<numBlocksHalf, BLOCK_SIZE>>>(device_data, ascending, size, step, log2step);
+            kernel_compare_and_swap_v3<<<numBlocks, threadsPerBlock>>>(device_data, ascending, size, step, log2step);
             if (post_launch_barrier_and_check()) {
                 cudaFree(device_data);
                 return EXIT_FAILURE;
             }
         }
         // intra-block refinement
-        kernel_intra_block_refine_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, ascending, size);
+        kernel_intra_block_refine_v3<<<numBlocks, threadsPerBlock, shared_mem_block_bytes>>>(device_data, ascending, size);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

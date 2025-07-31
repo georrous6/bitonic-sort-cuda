@@ -62,3 +62,18 @@ int post_launch_barrier_and_check(void) {
 
     return EXIT_SUCCESS;
 }
+
+
+__global__
+void kernel_reverse(int *data, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int n_half = n >> 1;
+    int stride = blockDim.x * gridDim.x;
+
+    for (int i = idx; i < n_half; i += stride) {
+        int temp = data[i];
+        int opposite_idx = n - i - 1;
+        data[i] = data[opposite_idx];
+        data[opposite_idx] = temp;
+    }
+}

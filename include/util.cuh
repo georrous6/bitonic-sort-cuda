@@ -14,6 +14,10 @@ void compare_and_swap(int *arr, int i, int j, int ascending) {
 }
 
 
+__global__
+void kernel_reverse(int *data, int n);
+
+
 __host__
 int host_to_device_data(int *host_data, int n, int **device_data);
 

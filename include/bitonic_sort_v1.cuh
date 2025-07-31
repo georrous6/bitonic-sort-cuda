@@ -5,7 +5,7 @@
 
 
 __host__
-int bitonic_sort_v1(int *host_data, int n);
+int bitonic_sort_v1(int *host_data, int n, int descending);
 
 
 #endif // BITONIC_SORT_V1_CUH

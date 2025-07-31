@@ -45,7 +45,7 @@ static void kernel_intra_block_refine_v1(int *data, int n, int size) {
 
 
 __host__
-int bitonic_sort_v1(int *host_data, int n) {
+int bitonic_sort_v1(int *host_data, int n, int descending) {
 
     int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int max_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
@@ -76,6 +76,15 @@ int bitonic_sort_v1(int *host_data, int n) {
         }
         // intra-block refinement
         kernel_intra_block_refine_v1<<<numBlocks, BLOCK_SIZE>>>(device_data, n, size);
+        if (post_launch_barrier_and_check()) {
+            cudaFree(device_data);
+            return EXIT_FAILURE;
+        }
+    }
+
+    // If descending order is requested, reverse the data
+    if (descending) {
+        kernel_reverse<<<numBlocks, BLOCK_SIZE>>>(device_data, n);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

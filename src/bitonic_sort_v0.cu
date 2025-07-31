@@ -18,7 +18,7 @@ void kernel_compare_and_swap_v0(int *data, int n, int size, int step) {
 
 
 __host__
-int bitonic_sort_v0(int *host_data, int n) {
+int bitonic_sort_v0(int *host_data, int n, int descending) {
 
     int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int *device_data = NULL;
@@ -37,6 +37,15 @@ int bitonic_sort_v0(int *host_data, int n) {
                 cudaFree(device_data);
                 return EXIT_FAILURE;
             }
+        }
+    }
+
+    // If descending order is requested, reverse the data
+    if (descending) {
+        kernel_reverse<<<numBlocks, BLOCK_SIZE>>>(device_data, n);
+        if (post_launch_barrier_and_check()) {
+            cudaFree(device_data);
+            return EXIT_FAILURE;
         }
     }
 

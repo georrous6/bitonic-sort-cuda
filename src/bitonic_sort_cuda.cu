@@ -20,29 +20,6 @@ int wakeup_cuda(void) {
 }
 
 
-__global__
-static void reverse_kernel(int *data, int n) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= (n >> 1)) return;
-
-    int temp = data[idx];
-    int opposite_idx = n - idx - 1;
-    data[idx] = data[opposite_idx];
-    data[opposite_idx] = temp;
-}
-
-
-__host__
-static int reverse_data(int *data, int n) {
-    int n_half = n >> 1;
-    int threadsPerBlock = BLOCK_SIZE > n_half ? n_half : BLOCK_SIZE;
-    int numBlocks = (n_half + threadsPerBlock - 1) / threadsPerBlock;
-
-    reverse_kernel<<<numBlocks, threadsPerBlock>>>(data, n);
-    return post_launch_barrier_and_check();
-}
-
-
 __host__
 int print_cuda_device_info(void) {
     int device_count;
@@ -127,26 +104,26 @@ int bitonic_sort_cuda(int *data, int n, int descending, bitonic_version_t kernel
             sort_serial(data, n, descending);
             break;
         case VERSION_V0:
-            status = bitonic_sort_v0(data, n);
+            status = bitonic_sort_v0(data, n, descending);
             break;
         case VERSION_V1:
-            status = bitonic_sort_v1(data, n);
+            status = bitonic_sort_v1(data, n, descending);
             break;
         case VERSION_V2:
-            status = bitonic_sort_v2(data, n);
+            status = bitonic_sort_v2(data, n, descending);
             break;
         case VERSION_V3:
-            status = bitonic_sort_v3(data, n);
+            status = bitonic_sort_v3(data, n, descending);
             break;
         default:
             fprintf(stderr, "Unsupported kernel version: %d\n", kernel_version);
             status = EXIT_FAILURE;
     }
 
-    if (status) return EXIT_FAILURE;
-
-    if (descending) {
-        return reverse_data(data, n);
+    if (status) {
+        fprintf(stderr, "Falling back to serial sort\n");
+        sort_serial(data, n, descending);
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

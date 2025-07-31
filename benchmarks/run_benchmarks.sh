@@ -7,6 +7,8 @@
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
 
+start=$(date +%s)
+
 export UCX_WARN_UNUSED_ENV_VARS=n
 
 # --- Check and read input argument ---
@@ -105,4 +107,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo -e "\nAll benchmarks completed successfully."
+end=$(date +%s)
+ellapsed=$((end - start))
+
+minutes=$((ellapsed / 60))
+seconds=$((ellapsed % 60))
+
+echo -e "\nBenchmarks completed successfully after $minutes minutes and $seconds seconds."

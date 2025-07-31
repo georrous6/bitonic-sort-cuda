@@ -3,7 +3,7 @@
 #include <cuda_runtime.h>
 
 __host__
-int bitonic_sort_v0(int *host_data, int n);
+int bitonic_sort_v0(int *host_data, int n, int descending);
 
 
 __global__ 

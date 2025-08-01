@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=bitonic_benchmark
+#SBATCH --job-name=bitonic_memcheck
 #SBATCH --partition=gpu
 #SBATCH --output=slurm-%j.out
 #SBATCH --time=00:10:00
@@ -13,37 +13,24 @@ export UCX_WARN_UNUSED_ENV_VARS=n
 
 # --- Check and read input argument ---
 PROJECT_DIR="$1"
-if [ -z "$PROJECT_DIR" ]; then
-    echo "Usage: $0 <project_dir>"
+VERSION="$2"
+q="$3"
+if [ -z "$PROJECT_DIR" ] || [ -z "$VERSION" ] || [ -z "$q" ]; then
+    echo "Usage: $0 <project_dir> <version> <q>"
     exit 1
 fi
 
 # --- Print job information ---
-echo -e "\n*** Running benchmarks on partition: $SLURM_JOB_PARTITION ***"
+echo -e "\n*** Running memcheck on partition: $SLURM_JOB_PARTITION ***"
 echo "Date: $(date)"
 
 # --- Move to the project directory ---
 cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 
-# --- Specify report and log directories
-RESULTS_DIR="benchmarks/results"
-TIMING_FILE="$RESULTS_DIR/execution_times_$SLURM_JOB_PARTITION.dat"
-mkdir -p "$RESULTS_DIR"
-rm -f "$TIMING_FILE"
-
 # --- Load required modules ---
 module purge
-module load gcc/12.2.0 cuda/12.2.1-bxtxsod python/3.10.8-cidwh6y
+module load gcc/12.2.0 cuda/12.2.1-bxtxsod
 module list
-
-# --- Create python environment ---
-if [ ! -d ~/grousenv ]; then
-    python3 -m venv ~/grousenv
-    source ~/grousenv/bin/activate
-    pip install numpy pandas matplotlib
-else
-    source ~/grousenv/bin/activate
-fi
 
 # --- Check for CUDA-compatible GPU ---
 echo -e "\n=== Checking for CUDA-compatible GPU ==="
@@ -71,10 +58,10 @@ nvcc --version
 # --- Build the project ---
 echo -e "\n=== Building the project ==="
 make clean
-make BUILD_TYPE=release -j$(nproc)
+make BUILD_TYPE=debug -j$(nproc)
 
 # --- Define executable path ---
-EXECUTABLE="$PROJECT_DIR/build/release/benchmarks"
+EXECUTABLE="$PROJECT_DIR/build/debug/benchmarks"
 
 # --- Check if executable exists ---
 if [ ! -x "$EXECUTABLE" ]; then
@@ -82,29 +69,11 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-VERSIONS=("serial" "v0" "v1" "v2" "v3" "v4")
-Q_MIN=10
-Q_MAX=27
-
-for VERSION in "${VERSIONS[@]}"; do
-
-    # Define sizes to test
-    for q in $(seq $Q_MIN $Q_MAX); do
-
-	echo "--- Running benchmark for $VERSION version with q=$q (partition: $SLURM_JOB_PARTITION) ---"
-
-        "$EXECUTABLE" "$q" --version "$VERSION" --timing-file "$TIMING_FILE"
-        if [ $? -ne 0 ]; then
-            echo "Error running benchmark for $VERSION version with q=$q"
-            exit 1
-        fi
-    done
-done
-
-# --- Export results ---
-python3 benchmarks/export_benchmark_results.py "$TIMING_FILE" "$RESULTS_DIR" "$SLURM_JOB_PARTITION"
+LOG_FILE="$PROJECT_DIR/memcheck/memcheck_${VERSION}_${q}_$SLURM_JOB_PARTITION.log"
+compute-sanitizer --tool memcheck --log-file "$LOG_FILE" \
+"$EXECUTABLE" "$q" --version "$VERSION" --no-validation
 if [ $? -ne 0 ]; then
-    echo "Error exporting benchmark results"
+    echo "Error running memcheck for $VERSION version with q=$q"
     exit 1
 fi
 
@@ -114,4 +83,4 @@ ellapsed=$((end - start))
 minutes=$((ellapsed / 60))
 seconds=$((ellapsed % 60))
 
-echo -e "\nBenchmarks completed successfully after $minutes minutes and $seconds seconds."
+echo -e "\nMemcheck completed successfully after $minutes minutes and $seconds seconds."

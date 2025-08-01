@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=bitonic_memcheck
 #SBATCH --partition=gpu
-#SBATCH --output=slurm-%j.out
+#SBATCH --output=logs/slurm-%j.out
 #SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

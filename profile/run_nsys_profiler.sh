@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=bitonic_test
+#SBATCH --job-name=bitonic_profile
 #SBATCH --partition=gpu
 #SBATCH --output=logs/slurm-%j.out
-#SBATCH --time=00:05:00
+#SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
@@ -13,13 +13,15 @@ export UCX_WARN_UNUSED_ENV_VARS=n
 
 # --- Check and read input argument ---
 PROJECT_DIR="$1"
-if [ -z "$PROJECT_DIR" ]; then
-    echo "Usage: $0 <project_dir>"
+VERSION="$2"
+q="$3"
+if [ -z "$PROJECT_DIR" ] || [ -z "$VERSION" ] || [ -z "$q" ]; then
+    echo "Usage: $0 <project_dir> <version> <q>"
     exit 1
 fi
 
 # --- Print job information ---
-echo -e "\n*** Running tests on partition: $SLURM_JOB_PARTITION ***"
+echo -e "\n*** Running Nsight Systems Profiler on partition: $SLURM_JOB_PARTITION ***"
 echo "Date: $(date)"
 
 # --- Move to the project directory ---
@@ -59,7 +61,7 @@ make clean
 make BUILD_TYPE=debug -j$(nproc)
 
 # --- Define executable path ---
-EXECUTABLE="$PROJECT_DIR/build/debug/tests"
+EXECUTABLE="$PROJECT_DIR/build/debug/benchmarks"
 
 # --- Check if executable exists ---
 if [ ! -x "$EXECUTABLE" ]; then
@@ -67,9 +69,13 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-"$EXECUTABLE"
+# --- Run Nsight Systems Profiler ---
+echo -e "\n=== Running Nsight Systems Profiler for $VERSION version with q=$q ==="
+OUTPUT_FILE="$PROJECT_DIR/profile/reports/report_${VERSION}_${q}"
+nsys profile --trace=cuda,nvtx --force-overwrite true -o "$OUTPUT_FILE" \
+    "$EXECUTABLE" "$q" --version "$VERSION"
 if [ $? -ne 0 ]; then
-    echo "Error: Tests failed"
+    echo "Error: Nsight Systems profiling failed"
     exit 1
 fi
 
@@ -79,4 +85,4 @@ ellapsed=$((end - start))
 minutes=$((ellapsed / 60))
 seconds=$((ellapsed % 60))
 
-echo -e "\nTests completed successfully after $minutes minutes and $seconds seconds."
+echo -e "\nNsight Systems profiling completed successfully after $minutes minutes and $seconds seconds."

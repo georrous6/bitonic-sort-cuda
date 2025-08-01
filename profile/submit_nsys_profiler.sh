@@ -7,8 +7,8 @@ if [ -z "$PARTITION" ]; then
     exit 1
 fi
 
-rm -rf results/
+rm -rf reports/
 rm -rf logs/
 mkdir -p logs/
-mkdir -p results/
-sbatch --partition "$PARTITION" run_memcheck.sh "$PROJECT_ROOT" "v4" "20"
+mkdir -p reports/
+sbatch --partition "$PARTITION" run_nsys_profile.sh "$PROJECT_ROOT" "v4" "20"

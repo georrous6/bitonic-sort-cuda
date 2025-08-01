@@ -3,4 +3,5 @@ build/
 *.o
 *.so
 *.out
+*.log
 *.a

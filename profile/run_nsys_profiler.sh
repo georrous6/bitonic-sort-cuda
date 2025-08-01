@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=bitonic_profile
 #SBATCH --partition=gpu
-#SBATCH --output=logs/slurm-%j.out
+#SBATCH --output=slurm-%j.out
 #SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -71,13 +71,23 @@ fi
 
 # --- Run Nsight Systems Profiler ---
 echo -e "\n=== Running Nsight Systems Profiler for $VERSION version with q=$q ==="
-OUTPUT_FILE="$PROJECT_DIR/profile/reports/report_${VERSION}_${q}"
-nsys profile --trace=cuda,nvtx --force-overwrite true -o "$OUTPUT_FILE" \
+OUTPUT_PREFIX="$PROJECT_DIR/profile/report_${VERSION}_${q}"
+nsys profile --trace=cuda --force-overwrite true -o "$OUTPUT_PREFIX" \
     "$EXECUTABLE" "$q" --version "$VERSION"
 if [ $? -ne 0 ]; then
     echo "Error: Nsight Systems profiling failed"
     exit 1
 fi
+
+nsys stats --report cuda_api_sum,cuda_gpu_kern_sum,cuda_gpu_mem_time_sum,cuda_gpu_mem_size_sum --force-export true \
+"$OUTPUT_PREFIX.nsys-rep" > "$OUTPUT_PREFIX.log"
+if [ $? -ne 0 ]; then
+    echo "Error: Nsight Systems stats extraction failed"
+    exit 1
+fi
+
+rm "$OUTPUT_PREFIX.sqlite"
+rm "$OUTPUT_PREFIX.nsys-rep"
 
 end=$(date +%s)
 ellapsed=$((end - start))
@@ -86,3 +96,4 @@ minutes=$((ellapsed / 60))
 seconds=$((ellapsed % 60))
 
 echo -e "\nNsight Systems profiling completed successfully after $minutes minutes and $seconds seconds."
+

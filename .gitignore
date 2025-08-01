@@ -5,3 +5,7 @@ build/
 *.out
 *.log
 *.a
+
+# Nsight files
+*.sqlite
+*.nsys-rep

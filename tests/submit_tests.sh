@@ -7,6 +7,5 @@ if [ -z "$PARTITION" ]; then
     exit 1
 fi
 
-rm -rf logs/
-mkdir -p logs/
+rm -f *.out
 sbatch --partition "$PARTITION" run_tests.sh "$PROJECT_ROOT"

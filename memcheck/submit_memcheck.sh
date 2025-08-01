@@ -8,7 +8,6 @@ if [ -z "$PARTITION" ]; then
 fi
 
 rm -rf results/
-rm -rf logs/
-mkdir -p logs/
 mkdir -p results/
+rm -f *.out
 sbatch --partition "$PARTITION" run_memcheck.sh "$PROJECT_ROOT" "v4" "20"

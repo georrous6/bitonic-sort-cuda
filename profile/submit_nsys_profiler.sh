@@ -7,8 +7,5 @@ if [ -z "$PARTITION" ]; then
     exit 1
 fi
 
-rm -rf reports/
-rm -rf logs/
-mkdir -p logs/
-mkdir -p reports/
-sbatch --partition "$PARTITION" run_nsys_profile.sh "$PROJECT_ROOT" "v4" "20"
+rm -f *.log *.out
+sbatch --partition "$PARTITION" run_nsys_profiler.sh "$PROJECT_ROOT" "v4" "20"

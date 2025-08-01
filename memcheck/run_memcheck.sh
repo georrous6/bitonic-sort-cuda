@@ -2,7 +2,7 @@
 #SBATCH --job-name=bitonic_memcheck
 #SBATCH --partition=gpu
 #SBATCH --output=slurm-%j.out
-#SBATCH --time=00:10:00
+#SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
@@ -69,13 +69,25 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-LOG_FILE="$PROJECT_DIR/memcheck/memcheck_${VERSION}_${q}_$SLURM_JOB_PARTITION.log"
-compute-sanitizer --tool memcheck --log-file "$LOG_FILE" \
-"$EXECUTABLE" "$q" --version "$VERSION" --no-validation
-if [ $? -ne 0 ]; then
-    echo "Error running memcheck for $VERSION version with q=$q"
-    exit 1
-fi
+TOOLS=("memcheck" "racecheck" "initcheck" "synccheck")
+
+for TOOL in "${TOOLS[@]}"; do
+    echo -e "\n=== Running compute-sanitizer --tool $TOOL ==="
+    
+    LOG_FILE="$PROJECT_DIR/memcheck/results/${TOOL}_${VERSION}_${q}.log"
+    mkdir -p "$(dirname "$LOG_FILE")"
+
+    compute-sanitizer \
+        --tool "$TOOL" \
+        --log-file "$LOG_FILE" \
+        --show-backtrace yes \
+        "$EXECUTABLE" "$q" --version "$VERSION" --no-validate
+
+    if [ $? -ne 0 ]; then
+        echo "Error running $TOOL for $VERSION version with q=$q"
+        exit 1
+    fi
+done
 
 end=$(date +%s)
 ellapsed=$((end - start))

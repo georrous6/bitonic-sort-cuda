@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_ROOT="$PWD"/../
+PROJECT_ROOT="$PWD"/..
 
 rm *.out
 sbatch --partition gpu run_tests.sh "$PROJECT_ROOT"

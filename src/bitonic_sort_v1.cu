@@ -5,18 +5,16 @@
 
 
 __global__ 
-static void kernel_intra_block_sort_v1(int *data, int n) {
+static void kernel_intra_block_sort_v1(int *data, int n, int chunk_size) {
     
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
-    int max_size = blockDim.x > n ? n : blockDim.x;
-
-    for (int size = 2; size <= max_size; size <<= 1) {
+    for (int size = 2; size <= chunk_size; size <<= 1) {
+        int is_asc = (i & size) == 0;
         for (int step = size >> 1; step > 0; step >>= 1) {
             int j  = i ^ step;
             if (j > i) {
-                int is_asc = (i & size) == 0;
                 compare_and_swap(data, i, j, is_asc);
             }
             __syncthreads();
@@ -26,17 +24,15 @@ static void kernel_intra_block_sort_v1(int *data, int n) {
 
 
 __global__ 
-static void kernel_intra_block_refine_v1(int *data, int n, int size) {
+static void kernel_intra_block_refine_v1(int *data, int n, int size, int chunk_size) {
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
 
-    int max_size = blockDim.x > n ? n : blockDim.x;
-
-    for (int step = max_size >> 1; step > 0; step >>= 1) {
+    int is_asc = (i & size) == 0;
+    for (int step = chunk_size >> 1; step > 0; step >>= 1) {
             int j  = i ^ step;
             if (j > i) {
-                int is_asc = (i & size) == 0;
                 compare_and_swap(data, i, j, is_asc);
             }
         __syncthreads();
@@ -48,22 +44,22 @@ __host__
 int bitonic_sort_v1(int *host_data, int n, int descending) {
 
     int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int max_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
-    int max_step = max_size >> 1;  // half block size
+    int chunk_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
+    int max_step = chunk_size >> 1;  // half chunk size
 
     int *device_data = NULL;
     if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS)
         return EXIT_FAILURE;
 
     // Intra block sorting
-    kernel_intra_block_sort_v1<<<numBlocks, BLOCK_SIZE>>>(device_data, n);
+    kernel_intra_block_sort_v1<<<numBlocks, BLOCK_SIZE>>>(device_data, n, chunk_size);
     if (post_launch_barrier_and_check()) {
         cudaFree(device_data);
         return EXIT_FAILURE;
     }
 
     // merge across blocks
-    for (int size = max_size << 1; size <= n; size <<= 1) {
+    for (int size = chunk_size << 1; size <= n; size <<= 1) {
 
         for (int step = size >> 1; step > max_step; step >>= 1) {
 
@@ -75,7 +71,7 @@ int bitonic_sort_v1(int *host_data, int n, int descending) {
             }
         }
         // intra-block refinement
-        kernel_intra_block_refine_v1<<<numBlocks, BLOCK_SIZE>>>(device_data, n, size);
+        kernel_intra_block_refine_v1<<<numBlocks, BLOCK_SIZE>>>(device_data, n, size, chunk_size);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

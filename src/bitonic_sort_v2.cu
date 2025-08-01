@@ -5,7 +5,7 @@
 
 
 __global__ 
-static void kernel_intra_block_sort_v2(int *data, int n) {
+static void kernel_intra_block_sort_v2(int *data, int n, int chunk_size) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -13,19 +13,19 @@ static void kernel_intra_block_sort_v2(int *data, int n) {
     extern __shared__ int s_data[];
     int offset = blockIdx.x * blockDim.x;
     int tid = threadIdx.x;
-    int max_size = blockDim.x > n ? n : blockDim.x;
 
     // Load data into shared memory
     s_data[tid] = data[offset + tid];
 
     __syncthreads();
 
-    for (int size = 2; size <= max_size; size <<= 1) {
+    int global_id = offset + tid;
+
+    for (int size = 2; size <= chunk_size; size <<= 1) {
+        int is_asc = (global_id & size) == 0;
         for (int step = size >> 1; step > 0; step >>= 1) {
             int j = tid ^ step;
             if (j > tid) {
-                int global_id = offset + tid;
-                int is_asc = (global_id & size) == 0;
                 compare_and_swap(s_data, tid, j, is_asc);
             }
             __syncthreads();
@@ -38,7 +38,7 @@ static void kernel_intra_block_sort_v2(int *data, int n) {
 
 
 __global__
-static void kernel_intra_block_refine_v2(int *data, int n, int size) {
+static void kernel_intra_block_refine_v2(int *data, int n, int size, int chunk_size) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -46,18 +46,18 @@ static void kernel_intra_block_refine_v2(int *data, int n, int size) {
     extern __shared__ int s_data[];
     int offset = blockIdx.x * blockDim.x;
     int tid = threadIdx.x;
-    int max_size = blockDim.x > n ? n : blockDim.x;
 
     // Load data into shared memory
     s_data[tid] = data[offset + tid];
 
     __syncthreads();
 
-    for (int step = max_size >> 1; step > 0; step >>= 1) {
+    int global_id = offset + tid;
+    int is_asc = (global_id & size) == 0;
+
+    for (int step = chunk_size >> 1; step > 0; step >>= 1) {
         int j  = tid ^ step;
         if (j > tid) {
-            int global_id = offset + tid;
-            int is_asc = (global_id & size) == 0;
             compare_and_swap(s_data, tid, j, is_asc);
         }
         __syncthreads();
@@ -71,23 +71,23 @@ static void kernel_intra_block_refine_v2(int *data, int n, int size) {
 __host__
 int bitonic_sort_v2(int *host_data, int n, int descending) {
     int numBlocks = (n + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int max_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
-    int max_step  = max_size >> 1;  // half block size
-    size_t shared_mem_block_bytes = max_size * sizeof(int);
+    int chunk_size = BLOCK_SIZE > n ? n : BLOCK_SIZE;
+    int max_step  = chunk_size >> 1;  // half block size
+    size_t shared_mem_block_bytes = chunk_size * sizeof(int);
 
     int *device_data = NULL;
     if (host_to_device_data(host_data, n, &device_data) != EXIT_SUCCESS)
         return EXIT_FAILURE;
 
     // Intra block sorting
-    kernel_intra_block_sort_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n);
+    kernel_intra_block_sort_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, chunk_size);
     if (post_launch_barrier_and_check()) {
         cudaFree(device_data);
         return EXIT_FAILURE;
     }
 
     // merge across blocks
-    for (int size = max_size << 1; size <= n; size <<= 1) {
+    for (int size = chunk_size << 1; size <= n; size <<= 1) {
         
         for (int step = size >> 1; step > max_step; step >>= 1) {
 
@@ -99,7 +99,7 @@ int bitonic_sort_v2(int *host_data, int n, int descending) {
             }
         }
         // intra-block refinement
-        kernel_intra_block_refine_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, size);
+        kernel_intra_block_refine_v2<<<numBlocks, BLOCK_SIZE, shared_mem_block_bytes>>>(device_data, n, size, chunk_size);
         if (post_launch_barrier_and_check()) {
             cudaFree(device_data);
             return EXIT_FAILURE;

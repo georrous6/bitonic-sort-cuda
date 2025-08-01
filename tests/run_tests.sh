@@ -18,6 +18,10 @@ if [ -z "$PROJECT_DIR" ]; then
     exit 1
 fi
 
+# --- Print job information ---
+echo -e "\n*** Running tests on partition: $SLURM_JOB_PARTITION ***"
+echo "Date: $(date)"
+
 # --- Move to the project directory ---
 cd "$PROJECT_DIR" || { echo "Cannot cd to $PROJECT_DIR"; exit 1; }
 

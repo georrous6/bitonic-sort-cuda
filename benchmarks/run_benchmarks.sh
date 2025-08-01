@@ -91,11 +91,11 @@ for VERSION in "${VERSIONS[@]}"; do
     # Define sizes to test
     for q in $(seq $Q_MIN $Q_MAX); do
 
-	echo "--- Running benchmark for version $VERSION with q=$q (partition: $SLURM_JOB_PARTITION) ---"
+	echo "--- Running benchmark for $VERSION version with q=$q (partition: $SLURM_JOB_PARTITION) ---"
 
         "$EXECUTABLE" "$q" --version "$VERSION" --timing-file "$TIMING_FILE"
         if [ $? -ne 0 ]; then
-            echo "Error running benchmark for version $VERSION with q=$q"
+            echo "Error running benchmark for $VERSION version with q=$q"
             exit 1
         fi
     done

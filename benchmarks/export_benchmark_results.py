@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("input_path", help="Full path to input CSV file")
     parser.add_argument("export_dir", help="Directory to export plots and tables")
     parser.add_argument("partition", help="SLURM job partition name (e.g., gpu, ampere)")
-    parser.add_argument("--q_value", type=int, default=30, help="Q value for speedup table (default: 30)")
+    parser.add_argument("q_value", type=int, help="Q value for speedup table")
     args = parser.parse_args()
 
     os.makedirs(args.export_dir, exist_ok=True)

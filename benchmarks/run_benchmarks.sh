@@ -5,6 +5,7 @@
 #SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
+#SBATCH --mem=12G
 #SBATCH --gpus-per-task=1
 
 start=$(date +%s)
@@ -83,8 +84,8 @@ if [ ! -x "$EXECUTABLE" ]; then
 fi
 
 VERSIONS=("serial" "v0" "v1" "v2" "v3" "v4" "v5")
-Q_MIN=16
-Q_MAX=30
+Q_MIN=15
+Q_MAX=29
 
 for VERSION in "${VERSIONS[@]}"; do
 
@@ -102,7 +103,8 @@ for VERSION in "${VERSIONS[@]}"; do
 done
 
 # --- Export results ---
-python3 benchmarks/export_benchmark_results.py "$TIMING_FILE" "$RESULTS_DIR" "$SLURM_JOB_PARTITION"
+python3 benchmarks/export_benchmark_results.py "$TIMING_FILE" \
+"$RESULTS_DIR" "$SLURM_JOB_PARTITION" "$Q_MAX"
 if [ $? -ne 0 ]; then
     echo "Error exporting benchmark results"
     exit 1

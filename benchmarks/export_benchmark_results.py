@@ -109,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("input_path", help="Full path to input CSV file")
     parser.add_argument("export_dir", help="Directory to export plots and tables")
     parser.add_argument("partition", help="SLURM job partition name (e.g., gpu, ampere)")
+    parser.add_argument("--q_value", type=int, default=30, help="Q value for speedup table (default: 30)")
     args = parser.parse_args()
 
     os.makedirs(args.export_dir, exist_ok=True)
@@ -116,6 +117,6 @@ if __name__ == "__main__":
     plot_filename = os.path.join(args.export_dir, f"execution_times_comparison_{args.partition}.png")
     plot_execution_time_vs_size(args.input_path, plot_filename, args.partition)
 
-    q_value = 27
+    q_value = args.q_value
     table_filename = os.path.join(args.export_dir, f"speedup_table_{args.partition}_{q_value}.dat")
     export_speedup_table(args.input_path, table_filename, q_value)

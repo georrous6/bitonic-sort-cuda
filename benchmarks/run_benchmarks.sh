@@ -2,7 +2,7 @@
 #SBATCH --job-name=bitonic_benchmark
 #SBATCH --partition=gpu
 #SBATCH --output=slurm-%j.out
-#SBATCH --time=00:10:00
+#SBATCH --time=00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
@@ -83,8 +83,8 @@ if [ ! -x "$EXECUTABLE" ]; then
 fi
 
 VERSIONS=("serial" "v0" "v1" "v2" "v3" "v4" "v5")
-Q_MIN=10
-Q_MAX=27
+Q_MIN=16
+Q_MAX=30
 
 for VERSION in "${VERSIONS[@]}"; do
 

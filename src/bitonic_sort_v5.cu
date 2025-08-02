@@ -33,8 +33,8 @@ static void kernel_intra_block_sort_v5(int *data, int chunk_size) {
     int local_tid = threadIdx.x;
     int local_tid_2 = 2 * local_tid;
     constexpr int HALF_WARP_SIZE = WARP_SIZE >> 1;
-    int is_in_upper_half = local_tid & HALF_WARP_SIZE;
-    int is_in_lower_half = !is_in_upper_half;
+    int is_in_lower_half = (local_tid & HALF_WARP_SIZE) == 0;
+    int is_in_upper_half = !is_in_lower_half;
 
     // Load data into shared memory
     s_data[local_tid_2 + is_in_upper_half] = data[offset + local_tid_2 + is_in_upper_half];
@@ -68,8 +68,8 @@ static void kernel_intra_block_refine_v5(int *data, int size, int chunk_size) {
     int local_tid = threadIdx.x;
     int local_tid_2 = 2 * local_tid;
     constexpr int HALF_WARP_SIZE = WARP_SIZE >> 1;
-    int is_in_upper_half = local_tid & HALF_WARP_SIZE;
-    int is_in_lower_half = !is_in_upper_half;
+    int is_in_lower_half = (local_tid & HALF_WARP_SIZE) == 0;
+    int is_in_upper_half = !is_in_lower_half;
 
     // Load data into shared memory
     s_data[local_tid_2 + is_in_upper_half] = data[offset + local_tid_2 + is_in_upper_half];

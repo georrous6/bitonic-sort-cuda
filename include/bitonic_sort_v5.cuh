@@ -3,8 +3,11 @@
 
 #include <cuda_runtime.h>
 
+namespace v5 {
 
 __host__
-int bitonic_sort_v5(int *host_data, int n, int descending);
+int bitonic_sort(int *host_data, int n, int descending);
+
+}
 
 #endif

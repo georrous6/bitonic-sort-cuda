@@ -18,7 +18,7 @@ static void kernel_wakeup(void) {}
 __host__
 int wakeup_cuda(void) {
     kernel_wakeup<<<1, 1>>>();
-    return post_launch_barrier_and_check();
+    return util::post_launch_barrier_and_check();
 }
 
 
@@ -106,22 +106,22 @@ int bitonic_sort_cuda(int *data, int n, int descending, bitonic_version_t kernel
             sort_serial(data, n, descending);
             break;
         case VERSION_V0:
-            status = bitonic_sort_v0(data, n, descending);
+            status = v0::bitonic_sort(data, n, descending);
             break;
         case VERSION_V1:
-            status = bitonic_sort_v1(data, n, descending);
+            status = v1::bitonic_sort(data, n, descending);
             break;
         case VERSION_V2:
-            status = bitonic_sort_v2(data, n, descending);
+            status = v2::bitonic_sort(data, n, descending);
             break;
         case VERSION_V3:
-            status = bitonic_sort_v3(data, n, descending);
+            status = v3::bitonic_sort(data, n, descending);
             break;
         case VERSION_V4:
-            status = bitonic_sort_v4(data, n, descending);
+            status = v4::bitonic_sort(data, n, descending);
             break;
         case VERSION_V5:
-            status = bitonic_sort_v5(data, n, descending);
+            status = v5::bitonic_sort(data, n, descending);
             break;
         default:
             fprintf(stderr, "Unsupported kernel version: %d\n", kernel_version);

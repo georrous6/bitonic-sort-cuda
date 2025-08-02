@@ -2,6 +2,8 @@
 #include <stdio.h>
 
 
+namespace util {
+
 __host__
 int host_to_device_data(int *host_data, int n, int **device_data) {
     cudaError_t err;
@@ -76,4 +78,6 @@ void kernel_reverse(int *data, int n) {
         data[i] = data[opposite_idx];
         data[opposite_idx] = temp;
     }
+}
+
 }

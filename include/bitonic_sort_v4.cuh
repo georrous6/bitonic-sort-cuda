@@ -3,8 +3,15 @@
 
 #include <cuda_runtime.h>
 
+namespace v4 {
 
 __host__
-int bitonic_sort_v4(int *host_data, int n, int descending);
+int bitonic_sort(int *host_data, int n, int descending);
+
+
+__global__
+void kernel_compare_and_swap(int *data, int size, int step, int log2step);
+
+}
 
 #endif

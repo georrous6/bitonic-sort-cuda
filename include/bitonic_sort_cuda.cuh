@@ -9,7 +9,8 @@ typedef enum {
     VERSION_V1 = 2,
     VERSION_V2 = 3,
     VERSION_V3 = 4,
-    VERSION_V4 = 5
+    VERSION_V4 = 5,
+    VERSION_V5 = 6
 } bitonic_version_t;
 
 

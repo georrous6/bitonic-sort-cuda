@@ -2,7 +2,7 @@
 #SBATCH --job-name=bitonic_benchmark
 #SBATCH --partition=gpu
 #SBATCH --output=slurm-%j.out
-#SBATCH --time=00:30:00
+#SBATCH --time=00:20:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --mem=12G

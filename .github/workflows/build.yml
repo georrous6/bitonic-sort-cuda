@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      CUDA_HOME: /usr/local/cuda
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup CUDA Toolkit
+      uses: lukka/get-cuda@v3
+      with:
+        version: '12.2.1'
+
+    - name: Verify nvcc version
+      run: nvcc --version
+
+    - name: Build release
+      run: make BUILD_TYPE=release
+
+    - name: Build debug
+      run: make clean && make BUILD_TYPE=debug
+
+    - name: List build artifacts
+      run: ls -l build/release build/debug

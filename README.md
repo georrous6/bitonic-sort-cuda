@@ -91,7 +91,9 @@ Sorting time for `2^29` 32-bit integers.
 
 Execution time vs array size:
 
+**GPU Partition**
 ![GPU Results](benchmarks/results/execution_times_comparison_gpu.png)
+**Ampere Partition**
 ![Ampere Results](benchmarks/results/execution_times_comparison_ampere.png)
 
 ---

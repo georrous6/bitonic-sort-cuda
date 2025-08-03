@@ -28,9 +28,11 @@ This repository is designed for testing, benchmarking, and profiling the Bitonic
 - [Performance Comparison](#performance-comparison)
 - [Requirements](#requirements)
 - [Local Setup](#local-setup)
-- [Running Tests](#running-tests)
-- [Running Benchmarks](#running-benchmarks)
+  - [Running Tests Locally](#running-tests-locally)
+  - [Running Benchmarks Locally](#running-benchmarks-locally)
 - [Setup on Aristotelis HPC](#setup-on-aristotelis-hpc)
+  - [Running Tests on HPC](#running-tests-on-hpc)
+  - [Running Benchmarks on HPC](#running-benchmarks-on-hpc)
 - [Aknowledgments](#aknowledgements)
 
 ---
@@ -138,7 +140,7 @@ Valid build types:
 
 ---
 
-## Running Tests
+### Running Tests Locally
 
 After building:
 
@@ -149,7 +151,7 @@ cd build/debug
 
 ---
 
-## Running Benchmarks
+### Running Benchmarks Locally
 
 ```bash
 cd build/release

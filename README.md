@@ -89,8 +89,8 @@ Sorting time for `2^29` 32-bit integers.
 
 Execution time vs array size:
 
-- ![GPU Results](benchmarks/results/execution_times_comparison_gpu.png)
-- ![Ampere Results](benchmarks/results/execution_times_comparison_ampere.png)
+![GPU Results](benchmarks/results/execution_times_comparison_gpu.png)
+![Ampere Results](benchmarks/results/execution_times_comparison_ampere.png)
 
 ---
 
@@ -207,5 +207,3 @@ chmod +x submit_benchmarks.sh
 ## Aknowledgements
 This work was carried out using the computational resources of the Aristotelis HPC Cluster 
 at Aristotle University of Thessaloniki.
-
-```

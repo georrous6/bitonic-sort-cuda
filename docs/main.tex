@@ -7,12 +7,14 @@
 \usepackage{amsmath}
 \usepackage{tcolorbox}
 \tcbuselibrary{listings, breakable}
+\usepackage{url}
 
-\title{Bitonic Sort with CUDA}
-\author{Georgios Rousomanis (10703) \\ 
-Aistotle University of Thessaloniki \\ 
-Department of Electrical and Computer engineering \\
-email: }
+\title{Bitonic Sort Using CUDA}
+\author{Georgios Rousomanis (10703) \\
+Aristotle University of Thessaloniki \\
+Department of Electrical and Computer Engineering \\
+email: \texttt{rousoman@ece.auth.gr}
+}
 \date{August 2025}
 
 % Section and subsection numbering style
@@ -27,7 +29,42 @@ email: }
 
 \section*{Introduction}
 
-\section{Naive Global-Memory Bitonic Sort}
+Bitonic Sort is a comparison-based sorting algorithm with a regular structure that makes it well-suited 
+for parallel execution on GPU architectures. Although its $O(n \log^2 n)$ time complexity is higher than 
+that of other sorting algorithms, its predictable control flow and memory access patterns enable efficient 
+implementation using CUDA. In this report, we present six progressively optimized versions of Bitonic Sort 
+on the GPU. Each version introduces targeted optimizations, such as kernel fusion to reduce launch overhead, 
+shared memory usage to accelerate intra-block sorting, warp-level shuffling to eliminate intra-warp 
+synchronization, thread reduction to avoid idle execution, and memory access reordering to eliminate bank 
+conflicts in shared memory. Table~\ref{tab:version_summary} provides a concise overview of each version's 
+primary features.
+
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|c|p{11cm}|}
+\hline
+\textbf{Version} & \textbf{Description} \\
+\hline
+V0 & Naive baseline: one comparison per thread; global memory only; one kernel per sorting step. \\
+\hline
+V1 & Loops over multiple comparison steps in a single kernel; reduces kernel launch overhead. \\
+\hline
+V2 & Uses shared memory for intra-block sorting; improves memory access latency. \\
+\hline
+V3 & Applies warp-level shuffles for intra-warp comparisons; reduces use of shared memory and barriers. \\
+\hline
+V4 & Reduces thread count by half; removes in-warp branching and non-participating threads. \\
+\hline
+V5 & Eliminates shared memory bank conflicts via in-warp index shuffling. \\
+\hline
+\end{tabular}
+\caption{Summary of GPU Bitonic Sort versions and their descriptions.}
+\label{tab:version_summary}
+\end{table}
+
+
+\section{Naive Bitonic Sort}
 
 This version represents the most basic GPU implementation of the Bitonic Sort algorithm. The key goal of this 
 version is correctness and a functional mapping of the bitonic sorting network onto the GPU. Each 
@@ -63,7 +100,7 @@ interacts with global memory, performance is limited -- especially due to the ov
 and the lack of shared memory usage.
 
 \begin{algorithm}[H]
-\caption{Bitonic Sort Driver (v0)}
+\caption{Bitonic Sort Host (v0)}
 \begin{algorithmic}[1]
 \Procedure{BitonicSortV0}{$host\_data$, $n$, $descending$}
     \State Allocate $device\_data$ on GPU
@@ -166,7 +203,7 @@ conditionally performs a \texttt{CompareAndSwap}, and synchronizes all threads a
 step and provides efficient intra-block correction during the merge phase.
 
 \begin{algorithm}[H]
-\caption{Bitonic Sort Driver (v1)}
+\caption{Bitonic Sort Host (v1)}
 \begin{algorithmic}[1]
 \Procedure{BitonicSortV1}{$host\_data$, $n$, $descending$}
     \State Allocate $device\_data$ on GPU
@@ -511,42 +548,39 @@ interfere with each other's shared memory accesses.
 
 \section*{Performance Comparison}
 
-To evaluate the performance of the six Bitonic Sort implementations, we conducted a series of benchmarks on 
-the Aristotelis High-Performance Computing (HPC) Cluster. Two distinct GPU partitions were used for this purpose, 
-each hosting a different class of NVIDIA GPU. The \texttt{gpu} partition features a Pascal-architecture Tesla P100, 
-while the \texttt{ampere} partition provides access to a high-end Ampere-architecture NVIDIA A100 GPU. 
-The key hardware specifications of each partition are summarized in Table~\ref{tab:gpu-specs}.
+To evaluate the effectiveness of our six Bitonic Sort implementations, we benchmarked them on the Aristotelis 
+High-Performance Computing (HPC) Cluster using two distinct GPU partitions: the \texttt{gpu} partition with a 
+Pascal-based Tesla P100, and the \texttt{ampere} partition featuring the more advanced Ampere-based NVIDIA A100. 
+Table~\ref{tab:gpu_specs} summarizes the key hardware specifications of each GPU.
 
 \begin{table}[H]
 \centering
 \begin{tabular}{|l|l|l|l|l|l|}
 \hline
 \textbf{Partition} & \textbf{GPU Model}        & \textbf{Architecture} & 
-\textbf{Memory} & \textbf{Max Power} & \textbf{Compute Capability} \\
+\textbf{Memory} & \textbf{Bandwidth} & \textbf{CUDA Capability} \\
 \hline
-\texttt{gpu}    & Tesla P100-PCIE-12GB     & Pascal  & 12 GB   & 250 W & 6.0 \\
-\texttt{ampere} & NVIDIA A100-SXM4-40GB    & Ampere  & 40 GB   & 400 W & 8.0 \\
+\texttt{gpu}    & Tesla P100-PCIE-12GB     & Pascal  & 12 GB   & 549 GB/s & 6.0 \\
+\texttt{ampere} & NVIDIA A100-SXM4-40GB    & Ampere  & 40 GB   & 1,555 GB/s & 8.0 \\
 \hline
 \end{tabular}
-\caption{GPU Partition Hardware Characteristics on the Aristotelis HPC Cluster}
-\label{tab:gpu-specs}
+\caption{GPU specifications of the Aristotelis HPC Cluster.}
+\label{tab:gpu_specs}
 \end{table}
 
-Tables~\ref{tab:speedup-vs-version-gpu} and~\ref{tab:speedup-vs-version-ampere} summarize the performance evolution 
-across all six versions of the Bitonic Sort implementation when sorting an input of $2^{29}$ integers on the Tesla 
-P100 (\texttt{gpu} partition) and the NVIDIA A100 (\texttt{ampere} partition), respectively.
+Tables~\ref{tab:speedup_vs_version_gpu} and~\ref{tab:speedup_vs_version_ampere} present the execution times 
+and relative speedups for sorting an input of $2^{29}$ integers on both GPUs. The baseline corresponds to a 
+serial CPU implementation. 
 
-On both GPUs, version V0 provides the largest jump in performance by moving computation from the CPU to the GPU, 
-yielding $24.74\times$ speedup on the P100 and an even greater $44.05\times$ on the A100. As newer versions build 
-on top of the previous ones with increasingly refined optimizations, each step contributes further (albeit 
-diminishing) improvements. Version V5 achieves a cumulative speedup of $42.98\times$ on the P100 and $60.69\times$ 
-on the A100 over the serial baseline.
+On both GPUs, Version V0 provides the largest initial gain by offloading computation to the GPU, achieving a
+$24.74\times$ speedup on the P100 and a $44.05\times$ speedup on the A100. Each subsequent version builds upon 
+the previous one with progressively more refined optimizations. Version V5 yields the highest overall speedup: 
+$42.63\times$ on the P100 and $60.69\times$ on the A100, relative to the serial baseline.
 
-These results reflect both the architectural advantage of the A100 and the effectiveness of the code optimizations. 
-The A100 provides approximately $1.67\times$ better performance than the P100 in the final version (1543.99 ms vs. 
-2585.56 ms), demonstrating the benefit of running the same optimized CUDA code on newer hardware. However, the 
-relative speedup progression across versions is similar, indicating that our optimization pipeline generalizes well 
-across GPU architectures.
+Despite the A100's higher memory bandwidth and more modern architecture, the relative speedup progression is 
+more pronounced on the P100. This is because the A100's high absolute performance reduces the margin for gains 
+from each optimization. Notably, the speedup from V4 to V5 is marginal on both GPUs, as the scheduler effectively 
+hides the latency introduced by shared memory bank conflicts, making our optimization less impactful in practice.
 
 \begin{table}[H]
 \centering
@@ -560,12 +594,12 @@ V1     & 3967.719   & 1.13  & 27.90 \\
 V2     & 3220.962   & 1.23  & 34.37 \\
 V3     & 3028.741   & 1.06  & 36.55 \\
 V4     & 2627.175   & 1.15  & 42.14 \\
-V5     & 2585.559   & 1.02  & 42.98 \\
+V5     & 2596.559   & 1.01  & 42.63 \\
 \hline
 \end{tabular}
 \caption{Execution time and speedup per version for sorting $2^{29}$ integers on the \texttt{gpu} 
 partition (Tesla P100).}
-\label{tab:speedup-vs-version-gpu}
+\label{tab:speedup_vs_version_gpu}
 \end{table}
 
 \begin{table}[H]
@@ -585,20 +619,76 @@ V5     & 1543.992   & 1.01  & 60.69 \\
 \end{tabular}
 \caption{Execution time and speedup per version for sorting $2^{29}$ integers on the \texttt{ampere} 
 partition (NVIDIA A100).}
-\label{tab:speedup-vs-version-ampere}
+\label{tab:speedup_vs_version_ampere}
 \end{table}
 
-Figure~\ref{fig:execution_times_comparison_gpu} illustrates the total execution time across versions for increasing 
-array sizes. It visualizes the scalability trend on the Tesla P100 GPU. The serial baseline becomes impractical for 
-large inputs, while GPU versions scale more gracefully. For the A100 GPU, the trend is similar but with consistently 
-lower execution times due to its superior architecture and memory bandwidth.
+Figures~\ref{fig:execution_times_comparison_gpu} and~\ref{fig:execution_times_comparison_ampere} show the 
+execution times for all Bitonic Sort versions across input sizes ranging from $2^{15}$ to $2^{29}$. For 
+small arrays ($n < 2^{20}$), GPU execution times fluctuate due to constant host-side overhead, which 
+dominates the total runtime. As the input size grows, this overhead becomes negligible and the optimized 
+device-side computation leads to stable and improved performance across versions.
+
+On the A100, these early fluctuations are even more pronounced because the kernels complete faster, making 
+the host-side launch overhead a relatively larger component of the total runtime.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\linewidth]{execution_times_comparison_gpu.png}
-    \caption{Total execution time for sorting arrays of increasing size using each version of Bitonic Sort on 
-    the \texttt{gpu} partition (Tesla P100). The A100 shows similar trends with consistently better performance.}
+    \caption{Execution time of each version for input sizes $2^{15}$ to $2^{29}$ on the \texttt{gpu} 
+    partition (Tesla P100).}
     \label{fig:execution_times_comparison_gpu}
 \end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{execution_times_comparison_ampere.png}
+    \caption{Execution time of each version for input sizes $2^{15}$ to $2^{29}$ on the \texttt{ampere} 
+    partition (NVIDIA A100).}
+    \label{fig:execution_times_comparison_ampere}
+\end{figure}
+
+\section*{Conclusions \& Future Work}
+
+In this report, we presented a series of CUDA implementations of the Bitonic Sort algorithm, each introducing
+targeted improvements over the previous version. We began with a naive global-memory-based implementation and 
+progressively enhanced it by first fusing multiple sorting steps into a single kernel to reduce launch overhead. 
+We then introduced shared memory to accelerate intra-block sorting and minimize global memory traffic. Next, we 
+applied warp-level shuffle operations to reduce synchronization costs for intra-warp comparisons. To further 
+improve efficiency, we halved the number of active threads, eliminating unnecessary branching within warps. 
+Finally, we removed shared memory bank conflicts using an indexing trick, enabling optimal memory throughput. 
+
+
+While Bitonic Sort is well-suited for parallel architectures, it is not asymptotically optimal for large-scale 
+sorting due to its $O(n \log^2 n)$ complexity. In future work, we plan to implement and evaluate an even faster
+algorithm: \textit{Radix Sort}. As a non-comparison-based method with linear time complexity for fixed-size keys, 
+Radix Sort is capable of outperforming Bitonic Sort on modern GPUs, particularly for large datasets. Optimizing 
+Radix Sort using warp-level operations, memory coalescing, and bucket-based partitioning will be a promising next 
+step in our exploration of high-performance GPU sorting algorithms.
+
+\section*{Acknowledgments}
+Performance measurements were conducted on the Aristotelis High Performance Computing Cluster at the Aristotle 
+University of Thessaloniki.
+
+\begin{thebibliography}{9}
+
+\bibitem{cuda_intro}
+M. Garland, 
+\textit{An Even Easier Introduction to CUDA}, 
+NVIDIA Developer Blog, 2008. [Online]. Available: 
+\url{https://developer.nvidia.com/blog/even-easier-introduction-cuda/}
+
+\bibitem{cuda_reduction}
+M. Harris, 
+\textit{Optimizing Parallel Reduction in CUDA}, 
+NVIDIA Corporation, 2007. [Online]. Available: 
+\url{https://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf}
+
+\bibitem{repo}
+G. Rousomanis, 
+\textit{Bitonic Sort with CUDA - Source Code Repository}, 
+GitHub, 2025. [Online]. Available: \url{https://github.com/georrous6/bitonic-sort-cuda}
+
+\end{thebibliography}
+
 
 \end{document}

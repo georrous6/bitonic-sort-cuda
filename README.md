@@ -1,8 +1,5 @@
 # Bitonic Sort CUDA
 
-![build](https://github.com/georrous6/bitonic-sort-cuda/actions/workflows/build.yml/badge.svg)
-
-
 This repository contains CUDA implementations of the Bitonic Sort algorithm optimized for GPU 
 architectures. The project explores six versions of Bitonic Sort, each progressively improving 
 performance by addressing specific GPU programming challenges:
@@ -47,7 +44,6 @@ This repository is designed for testing, benchmarking, and profiling the Bitonic
 - **`profile/`** - Nsight Systems profiling scripts (HPC)
 - **`src/`** - CUDA source files
 - **`tests/`** - Unit test scripts (HPC)
-- **`.github/`** - GitHub Actions CI/CD
 - **`.vscode/`** - VSCode settings
 
 ---

@@ -1,35 +1,47 @@
-name: Build
+name: Build and Test
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    env:
-      CUDA_HOME: /usr/local/cuda
-
+    strategy:
+      matrix:
+        build-type: [debug, release]
+    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Setup CUDA Toolkit
-      uses: lukka/get-cuda@v3
+    - uses: actions/checkout@v3
+    
+    - name: Set up CUDA
+      uses: actions-hub/cuda@v1.0.0
       with:
-        version: '12.2.1'
-
-    - name: Verify nvcc version
-      run: nvcc --version
-
-    - name: Build release
-      run: make BUILD_TYPE=release
-
-    - name: Build debug
-      run: make clean && make BUILD_TYPE=debug
-
-    - name: List build artifacts
-      run: ls -l build/release build/debug
+        cuda: '11.8'
+    
+    - name: Set CUDA_HOME
+      run: |
+        echo "CUDA_HOME=/usr/local/cuda" >> $GITHUB_ENV
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ make
+        
+    - name: Build
+      run: |
+        make BUILD_TYPE=${{ matrix.build-type }}
+        
+    - name: Run tests (debug only)
+      if: matrix.build-type == 'debug'
+      run: |
+        cd build/debug
+        ./tests
+        
+    - name: Verify benchmark binary (release only)
+      if: matrix.build-type == 'release'
+      run: |
+        cd build/release
+        ./benchmarks --version serial 10
